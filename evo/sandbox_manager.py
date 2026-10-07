@@ -24,8 +24,11 @@ def open_sandbox(work: Path, goal: str) -> dict:
         'promote': 'qualification required',
         'cpu': 'unset',
         'memory': 'unset',
-        'network': 'default deny',
-        'isolation': 'workspace only',
+        'network_policy': 'default deny',
+        'network_enforced': 'false',
+        'cpu_configured': 'false',
+        'memory_configured': 'false',
+        'isolation': 'WORKSPACE',
     }
     (folder / 'manifest.txt').write_text('\n'.join(f'{key}: {value}' for key, value in manifest.items()), encoding='utf-8')
     return {'ok': True, 'tool': 'sandbox', 'run_id': run_id, 'path': str(folder), 'vault': 'denied'}
@@ -75,3 +78,11 @@ def compare_baseline(baseline: float, candidate: float, security_passed: bool) -
         'promoted': better,
         'reason': 'independent comparison' if better else 'not better than the frozen baseline',
     }
+
+
+LEVELS = {'NONE': 0, 'WORKSPACE': 1, 'RESTRICTED_PROCESS': 2, 'CONTAINER': 3, 'VM': 4}
+
+def require_isolation(required: str, available: str = 'WORKSPACE') -> dict:
+    if LEVELS[required] > LEVELS[available]:
+        return {'ok': False, 'available': available, 'required': required, 'reason': 'this machine cannot isolate that experiment'}
+    return {'ok': True, 'available': available, 'required': required}
