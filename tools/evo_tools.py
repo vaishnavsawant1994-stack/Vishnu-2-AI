@@ -111,7 +111,7 @@ def register(reg, settings, models=None):
     reg.register(Tool('owner_search', 'Vaishnav search tool: public web titles', own_search, Risk.READ_ONLY))
 
     def own_python(payload):
-        return run_python(str(payload.get('source') or ''))
+        return run_python(str(payload.get('source') or ''), Path(getattr(settings, 'data_dir', root)))
     def own_image(payload):
         return create_image(str(payload.get('title') or 'Vishnu-2'), Path(settings.data_dir) / 'images')
     reg.register(Tool('owner_python', 'Run a short Python snippet in a subprocess', own_python, Risk.REVERSIBLE))
