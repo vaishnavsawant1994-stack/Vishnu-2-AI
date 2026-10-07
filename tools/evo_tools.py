@@ -101,4 +101,4 @@ def register(reg, settings):
 
     def own_download(payload):
         return download_file(str(payload.get('url') or ''), Path(getattr(settings, 'data_dir', root)))
-    reg.register(Tool('owner_download', 'Download a public HTTPS file into the data folder, max 5 MB', own_download, Risk.EXTERNAL_SIDE_EFFECT))
+    reg.register(Tool('owner_download', 'Download a public HTTPS file into the data folder, max 50 MB', own_download, Risk.EXTERNAL_SIDE_EFFECT))

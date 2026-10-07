@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 
-MAX_BYTES = 5_000_000
+MAX_BYTES = 50_000_000
 
 
 def _safe_name(url: str) -> str:
@@ -43,6 +43,6 @@ def download_file(url: str, work: Path) -> dict:
     except Exception as exc:
         return {'ok': False, 'tool': 'owner_download', 'reason': str(exc)}
     if len(data) > MAX_BYTES:
-        return {'ok': False, 'tool': 'owner_download', 'reason': 'file is larger than 5 MB'}
+        return {'ok': False, 'tool': 'owner_download', 'reason': 'file is larger than 50 MB'}
     path.write_bytes(data)
     return {'ok': True, 'tool': 'owner_download', 'owner': 'vaishnav', 'path': str(path), 'bytes': len(data)}
