@@ -52,3 +52,16 @@ If no tool is required, return an empty steps list.
             description = str(step.get('description', ''))[:500]
             clean.append({'tool': tool, 'description': description, 'parameters': parameters})
         return {'goal': str(plan.get('goal', ''))[:1000], 'steps': clean}
+
+
+    def plan_one(self, goal, context="", sensitivity="internal"):
+        """Ask for one next action. The mind verifier, not this plan, decides completion."""
+        bounded = (
+            "ACTIVE GOAL STATE:\n" + context +
+            "\nChoose one next tool step only. Do not mark the goal complete. "
+            "A tool result is not proof. If a lesson is present, apply it."
+        )
+        plan = self.plan(goal, context=bounded, sensitivity=sensitivity)
+        plan['steps'] = plan.get('steps', [])[:1]
+        plan['completion_authority'] = 'mind'
+        return plan

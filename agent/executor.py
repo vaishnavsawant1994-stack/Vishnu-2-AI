@@ -197,6 +197,7 @@ class AgentExecutor:
             lessons = self.learning.context_for(text)
             if lessons:
                 context = (context + "\n" + lessons).strip()[:14000]
+        mind_active = 'ACTIVE GOAL' in context or 'completion criteria' in context.lower()
         sensitivity = 'internal'
         if any(str(item.get('sensitivity', '')).lower() == 'secret' for item in memories):
             sensitivity = 'secret'
@@ -208,7 +209,8 @@ class AgentExecutor:
         self.events.emit('state', state='thinking')
         start = time.perf_counter()
         try:
-            plan = self.planner.plan(text, context=context, sensitivity=sensitivity)
+            planner = self.planner.plan_one if mind_active and hasattr(self.planner, "plan_one") else self.planner.plan
+            plan = planner(text, context=context, sensitivity=sensitivity)
             self._observe('agent.plan_ms', start)
         except ExecutionCancelled:
             raise
