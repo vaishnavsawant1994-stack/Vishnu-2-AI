@@ -22,6 +22,9 @@ from evo.workspace_memory import recall, remember
 from evo.debugger import debug_project
 from evo.desktop_open import open_file
 from evo.board import add_agent, add_task, design_check, list_agents, list_tasks, recall, retain, storyboard, topic_script, update_task
+from evo.similar.work import assign, comment, create_task
+from evo.similar.story import write_story
+from evo.similar.design import review
 from evo.coder import list_project, read_source, run_project, write_source
 from evo.fullstack import build_app
 from evo.python_dev import build_python
@@ -217,3 +220,20 @@ def register(reg, settings, models=None):
     reg.register(Tool('design_check', 'Check a design note for heading, action, and failure', design, Risk.READ_ONLY))
     reg.register(Tool('storyboard', 'Write an HTML storyboard without rendering video', board_story, Risk.READ_ONLY))
     reg.register(Tool('topic_script', 'Write a narration script without making a video', script, Risk.READ_ONLY))
+
+    def similar_task(payload):
+        return create_task(Path(getattr(settings, 'data_dir', root)), str(payload.get('title') or 'task'))
+    def similar_comment(payload):
+        return comment(Path(getattr(settings, 'data_dir', root)), int(payload.get('id') or 0), str(payload.get('text') or ''))
+    def similar_assign(payload):
+        return assign(Path(getattr(settings, 'data_dir', root)), str(payload.get('name') or 'agent'), str(payload.get('role') or 'worker'), int(payload.get('task_id') or 0))
+    def similar_story(payload):
+        scenes = payload.get('scenes') or ['Open', 'Act', 'Finish']
+        return write_story(Path(getattr(settings, 'data_dir', root)), str(payload.get('title') or 'story'), [str(item) for item in scenes])
+    def similar_review(payload):
+        return review(str(payload.get('text') or ''))
+    reg.register(Tool('similar_task', 'Create a tracked task with comments', similar_task, Risk.READ_ONLY))
+    reg.register(Tool('similar_comment', 'Add a comment to a tracked task', similar_comment, Risk.READ_ONLY))
+    reg.register(Tool('similar_assign', 'Assign an agent and mark the task doing', similar_assign, Risk.READ_ONLY))
+    reg.register(Tool('similar_story', 'Write a multi-scene HTML story and narration', similar_story, Risk.REVERSIBLE))
+    reg.register(Tool('similar_review', 'Review a design note for action, failure, and limit', similar_review, Risk.READ_ONLY))
