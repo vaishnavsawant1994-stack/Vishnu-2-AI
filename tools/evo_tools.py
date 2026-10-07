@@ -11,6 +11,7 @@ from evo.home import home_command
 from evo.local import make_skill, processes, set_volume, snapshot
 from evo.search import search_web
 from evo.skills import calculate, check_code, now, read_page
+from evo.owner_tools import owner_code, owner_math, owner_search
 from evo.media import music_command
 from evo.phone import screen_call
 from tools.registry import Risk, Tool
@@ -77,3 +78,13 @@ def register(reg, settings):
     def code(payload):
         return check_code(str(payload.get('source') or ''))
     reg.register(Tool('code_check', 'Check and run a pure expression; imports and file access are blocked', code, Risk.READ_ONLY))
+
+    def own_math(payload):
+        return owner_math(str(payload.get('expression') or '0'))
+    def own_code(payload):
+        return owner_code(str(payload.get('source') or ''))
+    def own_search(payload):
+        return owner_search(str(payload.get('query') or ''))
+    reg.register(Tool('owner_math', 'Vaishnav math tool: arithmetic only', own_math, Risk.READ_ONLY))
+    reg.register(Tool('owner_code', 'Vaishnav code tool: pure expression, no files or imports', own_code, Risk.READ_ONLY))
+    reg.register(Tool('owner_search', 'Vaishnav search tool: public web titles', own_search, Risk.READ_ONLY))
