@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from evo.mind import _connect
+from evo.reconcile import reconcile
 
 
 def recover(work: Path, conversation_id: str, evidence: dict) -> dict:
@@ -31,3 +32,17 @@ def recover(work: Path, conversation_id: str, evidence: dict) -> dict:
             conn.commit()
         return {'ok': True, 'goal_id': row['id'], 'resumed': True, 'repeated': False, 'state': 'VERIFIED'}
     return {'ok': True, 'goal_id': row['id'], 'resumed': True, 'repeated': False, 'state': last.get('state', 'open'), 'next': 'inspect before retry'}
+
+
+def recover_external(work: Path, conversation_id: str, kind: str, target: str, expected: str = '') -> dict:
+    found = recover(work, conversation_id, {})
+    if not found.get('ok'):
+        return found
+    observed = reconcile(kind, target, expected)
+    found['observed'] = observed
+    found['repeated'] = False
+    found['plan_allowed'] = observed['state'] in {'APPLIED', 'NOT_APPLIED', 'PARTIALLY_APPLIED', 'CONFLICTED'}
+    if observed['state'] == 'UNKNOWN':
+        found['plan_allowed'] = False
+        found['next'] = 'inspect before retry'
+    return found
