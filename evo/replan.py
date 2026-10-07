@@ -5,10 +5,11 @@ from __future__ import annotations
 
 def mind_replan(goal: str, criteria: list[str], previous_plan: str, observed: str, failure: str, revision: int, same_failure_count: int = 0) -> dict:
     if same_failure_count >= 3:
+        failure_class = failure if failure in {'MISSING_CREDENTIAL', 'EXTERNAL_DEPENDENCY', 'PERMISSION_DENIED', 'PLANNING_FAILURE', 'MISSING_CAPABILITY'} else 'MISSING_CAPABILITY'
         return {
             'ok': False,
             'action': 'block',
-            'failure': 'MISSING_CAPABILITY',
+            'failure': failure_class,
             'goal': goal,
             'criteria': list(criteria),
             'revision': revision,
