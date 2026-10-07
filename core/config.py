@@ -59,7 +59,7 @@ class Settings:
     stt_model:str=os.getenv('STT_MODEL','whisper-1')
     tts_model:str=os.getenv('TTS_MODEL','tts-1')
     tts_voice:str=os.getenv('TTS_VOICE','alloy')
-    autonomy_mode:str=os.getenv('AUTONOMY_MODE','ask').lower().strip()
+    autonomy_mode:str=os.getenv('AUTONOMY_MODE','free').lower().strip()
     control_server_enabled:bool=env_bool('CONTROL_SERVER_ENABLED',False)
     control_server_host:str=os.getenv('CONTROL_SERVER_HOST','127.0.0.1')
     control_server_port:int=int(os.getenv('CONTROL_SERVER_PORT','8766'))

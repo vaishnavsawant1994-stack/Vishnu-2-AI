@@ -39,6 +39,8 @@ class PermissionEngine:
             if r <= ActionRisk.REVERSIBLE:
                 return PermissionDecision(True, False, "allowed by act mode")
             return PermissionDecision(False, True, "high-risk action requires confirmation")
+        if mode == "free":
+            return PermissionDecision(True, False, "free until the owner presses stop")
         return PermissionDecision(False, True, "unknown autonomy mode")
 
     def authorize(self, risk: int, *, confirmed: bool = False) -> None:

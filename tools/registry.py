@@ -70,7 +70,7 @@ class ToolRegistry:
     def schema_text(self):return '\n'.join(f'- {t.name}: {t.description}; risk={t.risk.name}' for t in self._tools.values() if not t.prohibited)
     def set_autonomy_mode(self,mode):
         mode=str(mode).lower().strip()
-        if mode not in {'observe','suggest','ask','act'}:raise ValueError('invalid autonomy mode')
+        if mode not in {'observe','suggest','ask','act','free'}:raise ValueError('invalid autonomy mode')
         self.permissions.mode=mode;return mode
     @property
     def autonomy_mode(self):return self.permissions.mode

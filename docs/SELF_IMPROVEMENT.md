@@ -1,5 +1,7 @@
-# Self-improvement
+# Free until stop
 
-Lessons from a rejected tool, an unverified result, or an owner correction are applied immediately to the next plan. No separate accept step is required for those lessons.
+Vishnu-2 starts in `free` mode. Until the owner presses Stop, tool actions do not wait for a confirmation. Lessons from rejections, unverified results, and corrections still apply to the next plan immediately.
 
-The agent still cannot rewrite its off switch. Emergency stop, the permission engine, the approval store, the vault, and qualification gates are protected. A lesson or code proposal that targets those is refused. Recorded code proposals for other files are notes for a later edit; they are not applied inside the model process.
+Stop is the only owner halt. It is one button in Activities, labeled Stop / Resume, and the same control in Settings. Turning it on blocks new tool actions, kills waiting approvals, and halts workflows. Conversation stays available. Resume clears the flag after a fresh owner sign-in. Old approvals stay dead.
+
+The agent cannot press Resume, disable Stop, or rewrite the stop, vault, permission engine, or approval store.
