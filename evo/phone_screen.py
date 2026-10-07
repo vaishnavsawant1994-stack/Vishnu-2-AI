@@ -20,6 +20,7 @@ def _connect(path: Path) -> sqlite3.Connection:
             status TEXT NOT NULL,
             transcript TEXT NOT NULL DEFAULT '[]',
             summary TEXT NOT NULL DEFAULT '',
+            audio_path TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL
         )"""
     )
@@ -91,3 +92,36 @@ def _summary(caller: str, lines: list[dict]) -> str:
         return f'Screened a call from {caller}. No speech was captured.'
     spoken = '; '.join(f"{item['speaker']}: {item['text']}" for item in lines[-4:])
     return f'Screened a call from {caller}. {spoken}'
+
+
+def capture_audio(call_id: str, work: Path, audio: bytes, seconds: int = 5) -> dict:
+    """Store a live audio clip for a screened call. Carrier delivery is separate."""
+    if not audio:
+        return {'ok': False, 'tool': 'owner_phone', 'reason': 'no audio captured'}
+    if len(audio) > 8_000_000:
+        return {'ok': False, 'tool': 'owner_phone', 'reason': 'audio clip is too large'}
+    folder = Path(work) / 'call-audio'
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f'{call_id}.wav'
+    path.write_bytes(audio)
+    with _connect(Path(work) / 'calls.sqlite3') as conn:
+        row = conn.execute("SELECT id FROM calls WHERE id = ?", (call_id,)).fetchone()
+        if row is None:
+            path.unlink(missing_ok=True)
+            return {'ok': False, 'reason': 'call not found'}
+        try:
+            conn.execute("UPDATE calls SET audio_path = ? WHERE id = ?", (str(path), call_id))
+        except sqlite3.OperationalError:
+            conn.execute("ALTER TABLE calls ADD COLUMN audio_path TEXT NOT NULL DEFAULT ''")
+            conn.execute("UPDATE calls SET audio_path = ? WHERE id = ?", (str(path), call_id))
+        conn.commit()
+    return {
+        'ok': True,
+        'tool': 'owner_phone',
+        'call_id': call_id,
+        'audio_path': str(path),
+        'bytes': len(audio),
+        'seconds': seconds,
+        'live': True,
+        'carrier': False,
+    }

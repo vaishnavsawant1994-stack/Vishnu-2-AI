@@ -1,10 +1,10 @@
 # Pending
 
-Phone screening now records a call, stores each line, and returns a transcript and summary. It does not yet receive the live carrier audio. That still needs the phone companion to send the caller's speech.
+Phone screening records the call, stores lines, saves a live audio clip, and returns a transcript and summary. The clip is local. The phone companion still has to stream the carrier audio in.
 
 Still not live:
 
-- Carrier audio from the phone into the screening session.
+- Automatic carrier streaming from the phone into phone_screen_capture.
 - Vision model credentials on the owner's machine.
 - Live Spotify, maps, and smart-home device calls.
 - Windows window tiling, Wi-Fi, and brightness control.
