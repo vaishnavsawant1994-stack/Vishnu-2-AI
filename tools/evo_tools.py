@@ -18,6 +18,7 @@ from evo.download_tool import download_file
 from evo.read_tool import read_anything
 from evo.vision_tool import describe_image
 from evo.phone_screen import add_line, capture_audio, finish_screen, start_screen
+from evo.coder import list_project, read_source, run_project, write_source
 from evo.media import music_command
 from evo.phone import screen_call
 from tools.registry import Risk, Tool
@@ -129,3 +130,16 @@ def register(reg, settings, models=None):
         return capture_audio(str(payload.get('call_id') or ''), Path(getattr(settings, 'data_dir', root)), bytes(raw), int(payload.get('seconds') or 5))
     reg.register(Tool('phone_screen_finish', 'Finish the screened call and return the transcript and summary', phone_finish, Risk.READ_ONLY))
     reg.register(Tool('phone_screen_capture', 'Store a live audio clip on the screened call', phone_capture, Risk.EXTERNAL_SIDE_EFFECT))
+
+    def coder_list(_):
+        return list_project(Path(getattr(settings, 'data_dir', root)))
+    def coder_read(payload):
+        return read_source(Path(getattr(settings, 'data_dir', root)), str(payload.get('path') or ''))
+    def coder_write(payload):
+        return write_source(Path(getattr(settings, 'data_dir', root)), str(payload.get('path') or ''), str(payload.get('text') or ''))
+    def coder_test(payload):
+        return run_project(Path(getattr(settings, 'data_dir', root)), str(payload.get('path') or ''))
+    reg.register(Tool('coder_list', 'List files in the coding workspace', coder_list, Risk.READ_ONLY))
+    reg.register(Tool('coder_read', 'Read a source file in the coding workspace', coder_read, Risk.READ_ONLY))
+    reg.register(Tool('coder_write', 'Write a source file in the coding workspace', coder_write, Risk.REVERSIBLE))
+    reg.register(Tool('coder_test', 'Run pytest in the coding workspace', coder_test, Risk.REVERSIBLE))
