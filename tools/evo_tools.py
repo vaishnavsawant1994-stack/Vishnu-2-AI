@@ -25,6 +25,8 @@ from evo.board import add_agent, add_task, design_check, list_agents, list_tasks
 from evo.similar.work import assign, comment, create_task
 from evo.similar.story import write_story
 from evo.similar.design import review
+from evo.similar.sandbox import run_sandbox
+from evo.similar.reach import reach
 from evo.coder import list_project, read_source, run_project, write_source
 from evo.fullstack import build_app
 from evo.python_dev import build_python
@@ -237,3 +239,10 @@ def register(reg, settings, models=None):
     reg.register(Tool('similar_assign', 'Assign an agent and mark the task doing', similar_assign, Risk.READ_ONLY))
     reg.register(Tool('similar_story', 'Write a multi-scene HTML story and narration', similar_story, Risk.REVERSIBLE))
     reg.register(Tool('similar_review', 'Review a design note for action, failure, and limit', similar_review, Risk.READ_ONLY))
+
+    def sand(payload):
+        return run_sandbox(Path(getattr(settings, 'data_dir', root)), str(payload.get('path') or 'main.py'), str(payload.get('source') or 'print(1)'))
+    def page_reach(payload):
+        return reach(str(payload.get('url') or ''))
+    reg.register(Tool('sandbox_run', 'Run a Python file in the coding workspace', sand, Risk.REVERSIBLE))
+    reg.register(Tool('page_reach', 'Read one public https page without crawling', page_reach, Risk.READ_ONLY))
