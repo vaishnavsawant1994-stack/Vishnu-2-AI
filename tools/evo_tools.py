@@ -35,6 +35,8 @@ from evo.senior_python import build_senior
 from evo.senior_fullstack import build_senior_stack
 from evo.mind import goal_status, record_step, start_goal
 from evo.mind_planner import plan_cycle
+from evo.recover import recover
+from evo.mind import interrupt_step
 from evo.media import music_command
 from evo.phone import screen_call
 from tools.registry import Risk, Tool
@@ -267,3 +269,10 @@ def register(reg, settings, models=None):
     def mind_plan(payload):
         return plan_cycle(Path(getattr(settings, 'data_dir', root)), str(payload.get('title') or 'goal'), list(payload.get('criteria') or []), str(payload.get('hypothesis') or ''), str(payload.get('action') or ''), payload.get('expected'), payload.get('actual'), list(payload.get('met') or []), str(payload.get('blocked') or ''))
     reg.register(Tool('mind_plan', 'Run one goal cycle and return continue, complete, or blocked', mind_plan, Risk.REVERSIBLE))
+
+    def mind_interrupt(payload):
+        return interrupt_step(Path(getattr(settings, 'data_dir', root)), int(payload.get('id') or 0), str(payload.get('action') or ''), str(payload.get('operation_key') or ''))
+    def mind_recover(payload):
+        return recover(Path(getattr(settings, 'data_dir', root)), str(payload.get('conversation_id') or ''), dict(payload.get('evidence') or {}))
+    reg.register(Tool('mind_interrupt', 'Mark the current step interrupted', mind_interrupt, Risk.REVERSIBLE))
+    reg.register(Tool('mind_recover', 'Resume a goal from outside evidence without repeating a finished step', mind_recover, Risk.READ_ONLY))

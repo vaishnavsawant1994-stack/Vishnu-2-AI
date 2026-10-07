@@ -107,3 +107,15 @@ def active_goal(work: Path, conversation_id: str = '') -> dict | None:
     if row is None:
         return None
     return {'goal_id': row['id'], 'title': row['title'], 'criteria': json.loads(row['criteria']), 'lesson': row['lesson'], 'status': row['status']}
+
+
+def interrupt_step(work: Path, goal_id: int, action: str, operation_key: str) -> dict:
+    with _connect(work) as conn:
+        row = conn.execute('SELECT steps FROM goals WHERE id = ?', (goal_id,)).fetchone()
+        if row is None:
+            return {'ok': False, 'reason': 'goal not found'}
+        steps = json.loads(row['steps'])
+        steps.append({'action': action[:240], 'state': 'INTERRUPTED', 'operation_key': operation_key[:120], 'verified': False})
+        conn.execute("UPDATE goals SET steps = ?, status = 'interrupted' WHERE id = ?", (json.dumps(steps), goal_id))
+        conn.commit()
+    return {'ok': True, 'goal_id': goal_id, 'state': 'INTERRUPTED', 'operation_key': operation_key[:120]}
