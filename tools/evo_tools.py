@@ -10,7 +10,7 @@ from evo.heal import repair_note
 from evo.home import home_command
 from evo.local import make_skill, processes, set_volume, snapshot
 from evo.search import search_web
-from evo.skills import calculate, now, read_page
+from evo.skills import calculate, check_code, now, read_page
 from evo.media import music_command
 from evo.phone import screen_call
 from tools.registry import Risk, Tool
@@ -74,3 +74,6 @@ def register(reg, settings):
     reg.register(Tool('calculate', 'Evaluate an arithmetic expression', calc, Risk.READ_ONLY))
     reg.register(Tool('current_time', 'Return the current UTC time', clock, Risk.READ_ONLY))
     reg.register(Tool('read_page', 'Read public text from an https page', page, Risk.READ_ONLY))
+    def code(payload):
+        return check_code(str(payload.get('source') or ''))
+    reg.register(Tool('code_check', 'Check and run a pure expression; imports and file access are blocked', code, Risk.READ_ONLY))

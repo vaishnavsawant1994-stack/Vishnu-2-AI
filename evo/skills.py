@@ -53,8 +53,35 @@ def read_page(url: str, limit: int = 800) -> dict:
             raw = response.read(200_000).decode('utf-8', 'replace')
     except Exception as exc:
         return {'ok': False, 'reason': str(exc)}
-    text = re.sub('<script[\s\S]*?</script>', ' ', raw, flags=re.I)
-    text = re.sub('<style[\s\S]*?</style>', ' ', text, flags=re.I)
+    text = re.sub(r'<script[\s\S]*?</script>', ' ', raw, flags=re.I)
+    text = re.sub(r'<style[\s\S]*?</style>', ' ', text, flags=re.I)
     text = re.sub('<[^>]+>', ' ', text)
     text = ' '.join(unescape(text).split())
     return {'ok': bool(text), 'url': url, 'text': text[:limit]}
+
+
+BANNED_NAMES = {'exec', 'eval', 'open', 'compile', '__import__', 'input', 'globals', 'locals', 'getattr', 'setattr'}
+BANNED_NODES = (ast.Import, ast.ImportFrom, ast.With, ast.Raise, ast.Try, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+
+
+def check_code(source: str) -> dict:
+    """Scan code and run only a pure expression. No files, imports, or exec."""
+    cleaned = source.strip()[:500]
+    if not cleaned:
+        return {'ok': False, 'safe': False, 'reason': 'empty'}
+    try:
+        tree = ast.parse(cleaned, mode='eval')
+    except SyntaxError as exc:
+        return {'ok': False, 'safe': False, 'reason': f'syntax: {exc.msg}'}
+    for node in ast.walk(tree):
+        if isinstance(node, BANNED_NODES):
+            return {'ok': False, 'safe': False, 'reason': 'imports and definitions are blocked'}
+        if isinstance(node, ast.Name) and node.id in BANNED_NAMES:
+            return {'ok': False, 'safe': False, 'reason': f'{node.id} is blocked'}
+        if isinstance(node, ast.Attribute):
+            return {'ok': False, 'safe': False, 'reason': 'attribute access is blocked'}
+    try:
+        result = _eval(tree.body)
+    except Exception as exc:
+        return {'ok': False, 'safe': True, 'reason': str(exc)}
+    return {'ok': True, 'safe': True, 'result': result}
