@@ -33,6 +33,7 @@ from evo.fullstack import build_app
 from evo.python_dev import build_python
 from evo.senior_python import build_senior
 from evo.senior_fullstack import build_senior_stack
+from evo.mind import goal_status, record_step, start_goal
 from evo.media import music_command
 from evo.phone import screen_call
 from tools.registry import Risk, Tool
@@ -251,3 +252,13 @@ def register(reg, settings, models=None):
     def suite(payload):
         return run_suite(Path(getattr(settings, 'data_dir', root)), str(payload.get('title') or 'Job'))
     reg.register(Tool('similar_suite', 'Run the original task, design, and story jobs together', suite, Risk.REVERSIBLE))
+
+    def mind_start(payload):
+        return start_goal(Path(getattr(settings, 'data_dir', root)), str(payload.get('title') or 'goal'), list(payload.get('criteria') or []))
+    def mind_step(payload):
+        return record_step(Path(getattr(settings, 'data_dir', root)), int(payload.get('id') or 0), str(payload.get('hypothesis') or ''), str(payload.get('action') or ''), str(payload.get('result') or ''), bool(payload.get('verified')))
+    def mind_status(payload):
+        return goal_status(Path(getattr(settings, 'data_dir', root)), int(payload.get('id') or 0), list(payload.get('met') or []))
+    reg.register(Tool('mind_start', 'Start a goal with completion criteria', mind_start, Risk.REVERSIBLE))
+    reg.register(Tool('mind_step', 'Record a hypothesis, action, and verification', mind_step, Risk.REVERSIBLE))
+    reg.register(Tool('mind_status', 'Say whether a goal is complete or must continue', mind_status, Risk.READ_ONLY))
