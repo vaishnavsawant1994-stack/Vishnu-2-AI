@@ -21,6 +21,7 @@ def _connect(work: Path) -> sqlite3.Connection:
             status TEXT,
             steps TEXT,
             lesson TEXT,
+            conversation_id TEXT DEFAULT '',
             created_at TEXT
         )'''
     )
@@ -28,14 +29,14 @@ def _connect(work: Path) -> sqlite3.Connection:
     return conn
 
 
-def start_goal(work: Path, title: str, criteria: list[str]) -> dict:
+def start_goal(work: Path, title: str, criteria: list[str], conversation_id: str = '') -> dict:
     checks = [item.strip() for item in criteria if item.strip()]
     if not checks:
         return {'ok': False, 'reason': 'a goal needs completion criteria'}
     with _connect(work) as conn:
         cur = conn.execute(
-            'INSERT INTO goals (title, criteria, status, steps, lesson, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-            (title[:160], json.dumps(checks), 'open', '[]', '', datetime.now(timezone.utc).isoformat()),
+            'INSERT INTO goals (title, criteria, status, steps, lesson, conversation_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            (title[:160], json.dumps(checks), 'open', '[]', '', conversation_id[:80], datetime.now(timezone.utc).isoformat()),
         )
         conn.commit()
     return {'ok': True, 'tool': 'mind', 'id': cur.lastrowid, 'status': 'open', 'criteria': checks}
@@ -92,3 +93,17 @@ def mark_blocked(work: Path, goal_id: int, reason: str) -> dict:
         conn.execute("UPDATE goals SET status = 'blocked', lesson = ? WHERE id = ?", (reason[:240], goal_id))
         conn.commit()
     return {'ok': True, 'tool': 'mind', 'id': goal_id, 'status': 'blocked', 'reason': reason[:240], 'stop_cleared': False}
+
+
+def active_goal(work: Path, conversation_id: str = '') -> dict | None:
+    with _connect(work) as conn:
+        try:
+            row = conn.execute(
+                "SELECT id, title, criteria, lesson, status FROM goals WHERE status IN ('open', 'learning', 'blocked') AND (? = '' OR conversation_id = ?) ORDER BY id DESC LIMIT 1",
+                (conversation_id, conversation_id),
+            ).fetchone()
+        except sqlite3.OperationalError:
+            return None
+    if row is None:
+        return None
+    return {'goal_id': row['id'], 'title': row['title'], 'criteria': json.loads(row['criteria']), 'lesson': row['lesson'], 'status': row['status']}

@@ -198,6 +198,15 @@ class AgentExecutor:
             if lessons:
                 context = (context + "\n" + lessons).strip()[:14000]
         mind_active = 'ACTIVE GOAL' in context or 'completion criteria' in context.lower()
+        if not mind_active:
+            try:
+                from evo.hydrate import hydrate
+                loaded = hydrate(Path(getattr(self.settings, 'data_dir', Path.cwd())), str(conversation_id or ''))
+            except Exception:
+                loaded = ''
+            if loaded:
+                context = (context + "\n" + loaded).strip()[:14000]
+                mind_active = True
         sensitivity = 'internal'
         if any(str(item.get('sensitivity', '')).lower() == 'secret' for item in memories):
             sensitivity = 'secret'
