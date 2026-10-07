@@ -1,19 +1,29 @@
-# Vishnu-2 AI architecture
-
-Vishnu-2 AI is a local idea ledger with a council in front of it.
+# Vishnu Architecture V2
 
 ```text
-Web console
-    |
-FastAPI
-    |
-Idea store (SQLite) ---- Council
-                          |-- Preserver  what must not break
-                          |-- Builder    how it could exist
-                          |-- Critic     strongest objection
-                          |-- Operator   smallest reversible experiment
+Desktop UI / Local API
+        |
+     Event Bus
+        |
+   Agent Runtime
+   /    |      \
+Model  Memory  Tool Registry
+Router  OS       |
+                 Permission policy
+                 |
+        Files / Web / System / Docs / Screen / Reminders
 ```
 
-An idea moves `seed -> debated -> decided` or `parked`. A decision stores the claim, the dissent that survived, and one experiment that can falsify the claim. Nothing in this path launches apps, reads the screen, or calls device tools.
+## Current state machine
 
-Model use is optional and replaceable. The heuristic council is the default so the product still works with no provider configured.
+`idle -> listening -> thinking -> acting -> speaking -> idle`
+
+## Safety design
+
+- Remote server is loopback-only by default.
+- Remote commands require a paired bearer token.
+- Pairing offers are one-time and expire.
+- Tool risk is enforced below the model.
+- Side effects are blocked by default in `ask` mode.
+- Tool execution is audited in SQLite.
+- Plugins are manifest-based; arbitrary in-process Python import is intentionally excluded.

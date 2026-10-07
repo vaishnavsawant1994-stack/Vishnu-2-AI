@@ -1,0 +1,228 @@
+from __future__ import annotations
+
+from datetime import date, datetime
+from typing import Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from fastapi import APIRouter, Cookie, HTTPException, Query
+from pydantic import BaseModel, Field
+
+
+class TodayItemBody(BaseModel):
+    """Create a real owner-controlled everyday item for the Today timeline."""
+    category: Literal['task', 'work', 'meeting', 'reminder', 'plan']
+    title: str = Field(min_length=1, max_length=160)
+    due_at: str = Field(min_length=10, max_length=80)
+    timezone: str = Field(min_length=1, max_length=80)
+
+
+class SnoozeBody(BaseModel):
+    until: str = Field(min_length=1, max_length=80)
+    timezone: str | None = Field(default=None, max_length=80)
+
+
+class RescheduleBody(BaseModel):
+    due_at: str = Field(min_length=1, max_length=80)
+    timezone: str | None = Field(default=None, max_length=80)
+
+
+def everyday_intelligence_router(runtime):
+    """Trusted owner inspection/control for deterministic P4 lifecycle state."""
+
+    router = APIRouter(prefix='/iphone/api/everyday', tags=['everyday-intelligence'])
+    registry = runtime['device_registry']
+    everyday = runtime['everyday_intelligence']
+
+    def authenticate(device_id: str | None, token: str | None):
+        if not device_id or not token or not registry.authenticate(device_id, token):
+            raise HTTPException(401, 'This browser is not trusted or its session was revoked')
+        if hasattr(registry, 'authorize') and not registry.authorize(device_id, 'ai:chat'):
+            raise HTTPException(403, 'This device is not permitted to use everyday intelligence')
+        return device_id
+
+    def allowed_memory(device_id: str):
+        allowed = {'normal'}
+        if not hasattr(registry, 'authorize') or registry.authorize(device_id, 'memory:sensitive'):
+            allowed.update({'sensitive', 'secret'})
+        return allowed
+
+    @router.get('/active')
+    def active(
+        limit: int = Query(default=100, ge=1, le=500),
+        pa_device: str | None = Cookie(default=None),
+        pa_token: str | None = Cookie(default=None),
+    ):
+        authenticate(pa_device, pa_token)
+        return {'items': everyday.items(status='open', limit=limit)}
+
+    @router.get('/timeline')
+    def timeline(
+        limit: int = Query(default=500, ge=1, le=500),
+        day: date | None = Query(default=None),
+        timezone: str = Query(default='UTC', min_length=1, max_length=80),
+        pa_device: str | None = Cookie(default=None),
+        pa_token: str | None = Cookie(default=None),
+    ):
+        """Real persisted scheduled and completed items for the owner's combined timeline.
+
+        Return existing canonical records, including terminal states; do not infer
+        meeting attendance or reconstruct historical actions without audit proof.
+        """
+        authenticate(pa_device, pa_token)
+        items = everyday.items(status='all', limit=limit)
+        if day is None:
+            return {'items': items}
+        try:
+            zone = ZoneInfo(timezone)
+        except ZoneInfoNotFoundError as exc:
+            raise HTTPException(422, 'Unknown timezone') from exc
+        selected = []
+        for item in items:
+            raw = item.get('due_at') or item.get('scheduled_at') or item.get('start_at')
+            if not raw:
+                continue
+            try:
+                if len(str(raw)) == 10:
+                    matches = date.fromisoformat(str(raw)) == day
+                else:
+                    instant = datetime.fromisoformat(str(raw).replace('Z', '+00:00'))
+                    if instant.tzinfo is None or instant.utcoffset() is None:
+                        continue
+                    matches = instant.astimezone(zone).date() == day
+            except ValueError:
+                continue
+            if matches:
+                selected.append(item)
+        return {'items': selected}
+
+    @router.get('/items/{item_id}')
+    def get_today_item(
+        item_id: str,
+        pa_device: str | None = Cookie(default=None),
+        pa_token: str | None = Cookie(default=None),
+    ):
+        """Return one saved task/meeting for its addressable PWA detail route."""
+        authenticate(pa_device, pa_token)
+        item = everyday.get(item_id)
+        if not item:
+            raise HTTPException(404, 'Everyday item not found')
+        return {'item': item}
+
+    @router.post('/items', status_code=201)
+    def add_today_item(
+        body: TodayItemBody,
+        pa_device: str | None = Cookie(default=None),
+        pa_token: str | None = Cookie(default=None),
+    ):
+        authenticate(pa_device, pa_token)
+        title = body.title.strip()
+        if not title:
+            raise HTTPException(422, 'A nonempty title is required')
+        try:
+            if len(body.due_at) == 10:
+                date.fromisoformat(body.due_at)
+                if body.category == 'meeting':
+                    raise HTTPException(422, 'Meetings require a time')
+            else:
+                due = datetime.fromisoformat(body.due_at.replace('Z', '+00:00'))
+                if due.tzinfo is None or due.utcoffset() is None:
+                    raise HTTPException(422, 'Provide a timezone-aware date and time')
+            category = {'task': 'task', 'work': 'task',
+                        'meeting': 'commitment', 'reminder': 'reminder',
+                        'plan': 'goal'}[body.category]
+            item_id = everyday.add(
+                category, title, due_at=body.due_at,
+                context='personal-ai:today:' + body.category,
+                source='today_ui', timezone_name=body.timezone,
+            )
+        except ValueError as exc:
+            raise HTTPException(422, 'Invalid Today date or timezone') from exc
+        return {'item': everyday.get(item_id)}
+
+    @router.get('/due')
+    def due(
+        include_surfaced: bool = False,
+        limit: int = Query(default=100, ge=1, le=500),
+        pa_device: str | None = Cookie(default=None),
+        pa_token: str | None = Cookie(default=None),
+    ):
+        authenticate(pa_device, pa_token)
+        return {'items': everyday.due_items(include_surfaced=include_surfaced, limit=limit)}
+
+    @router.get('/briefing')
+    def briefing(
+        pa_device: str | None = Cookie(default=None),
+        pa_token: str | None = Cookie(default=None),
+    ):
+        device_id = authenticate(pa_device, pa_token)
+        return everyday.briefing(allowed_sensitivities=allowed_memory(device_id))
+
+    @router.get('/{item_id}/history')
+    def history(
+        item_id: str,
+        pa_device: str | None = Cookie(default=None),
+        pa_token: str | None = Cookie(default=None),
+    ):
+        authenticate(pa_device, pa_token)
+        if not everyday.get(item_id):
+            raise HTTPException(404, 'Everyday item not found')
+        return {'item_id': item_id, 'history': everyday.history(item_id)}
+
+    @router.get('/{item_id}/context')
+    def context(
+        item_id: str,
+        pa_device: str | None = Cookie(default=None),
+        pa_token: str | None = Cookie(default=None),
+    ):
+        device_id = authenticate(pa_device, pa_token)
+        if not everyday.get(item_id):
+            raise HTTPException(404, 'Everyday item not found')
+        return {'item_id': item_id, 'memories': everyday.context_for_item(item_id, allowed_sensitivities=allowed_memory(device_id))}
+
+    @router.post('/{item_id}/complete')
+    def complete(
+        item_id: str,
+        pa_device: str | None = Cookie(default=None),
+        pa_token: str | None = Cookie(default=None),
+    ):
+        authenticate(pa_device, pa_token)
+        if not everyday.complete(item_id):
+            raise HTTPException(409, 'Everyday item cannot be completed')
+        return everyday.get(item_id)
+
+    @router.post('/{item_id}/snooze')
+    def snooze(
+        item_id: str,
+        body: SnoozeBody,
+        pa_device: str | None = Cookie(default=None),
+        pa_token: str | None = Cookie(default=None),
+    ):
+        authenticate(pa_device, pa_token)
+        if not everyday.snooze(item_id, body.until, timezone_name=body.timezone):
+            raise HTTPException(409, 'Everyday item cannot be snoozed')
+        return everyday.get(item_id)
+
+    @router.post('/{item_id}/reschedule')
+    def reschedule(
+        item_id: str,
+        body: RescheduleBody,
+        pa_device: str | None = Cookie(default=None),
+        pa_token: str | None = Cookie(default=None),
+    ):
+        authenticate(pa_device, pa_token)
+        if not everyday.reschedule(item_id, body.due_at, timezone_name=body.timezone):
+            raise HTTPException(409, 'Everyday item cannot be rescheduled')
+        return everyday.get(item_id)
+
+    @router.post('/{item_id}/cancel')
+    def cancel(
+        item_id: str,
+        pa_device: str | None = Cookie(default=None),
+        pa_token: str | None = Cookie(default=None),
+    ):
+        authenticate(pa_device, pa_token)
+        if not everyday.cancel(item_id):
+            raise HTTPException(409, 'Everyday item cannot be cancelled')
+        return everyday.get(item_id)
+
+    return router

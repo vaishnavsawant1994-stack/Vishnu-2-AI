@@ -1,162 +1,97 @@
-"""Local console for the Vishnu-2 AI idea council."""
-
 from __future__ import annotations
 
-import os
-from pathlib import Path
+import sys
+import threading
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, Field
-
-from app.council import debate
-from app.store import add_idea, connect, decide, get_idea, list_ideas, save_council
-
-DATA = Path(os.getenv("VISHNU2_DATA_DIR", "./data"))
-DB = DATA / "ideas.sqlite3"
-
-app = FastAPI(title="Vishnu-2 AI", version="0.1.0")
-
-
-class IdeaIn(BaseModel):
-    title: str = Field(min_length=1, max_length=160)
-    seed: str = Field(default="", max_length=4000)
-
-
-class DecisionIn(BaseModel):
-    status: str
-
-
-@app.get("/", response_class=HTMLResponse)
-def index() -> str:
-    return PAGE
-
-
-@app.get("/api/health")
-def health() -> dict:
-    return {"ok": True, "product": "Vishnu-2 AI"}
-
-
-@app.get("/api/ideas")
-def ideas() -> list[dict]:
-    with connect(DB) as conn:
-        return list_ideas(conn)
-
-
-@app.post("/api/ideas")
-def create_idea(body: IdeaIn) -> dict:
-    with connect(DB) as conn:
-        return add_idea(conn, body.title, body.seed)
+from agent.durable_executor import DurableAgentExecutor
+from automation.engine import AutomationEngine
+from capabilities.benchmark import CapabilityBenchmark
+from capabilities.dialogue_evaluation import ModelDialogueEvaluation
+from capabilities.scenarios import CompetitiveScenarioSuite
+from core.config import settings
+from core.durable_approval_runtime import DurableApprovalTurnRuntime
+from core.events import EventBus
+from core.preferences import Preferences
+from core.telemetry import Telemetry
+from devices.continuity import ContinuityService
+from devices.gateway import DeviceGateway
+from devices.registry import DeviceRegistry
+from future_intelligence.program import FutureIntelligenceProgram
+from integrations.plugins import PluginManifestRegistry
+from integrations.runtime import build_integrations
+from knowledge.governance import KnowledgeAuthority
+from knowledge.store import KnowledgeStore
+from memory.governance import GovernedMemory
+from memory.second_brain import SecondBrain
+from memory.store import MemoryStore
+from memory.vector_store import VectorStore
+from models.governed_router import GovernedModelRouter
+from notifications.apns import APNsProvider
+from notifications.service import NotificationService
+from proactive.engine import AttentionRelevanceEngine
+from qualification.program import P3QualificationProgram
+from qualification.voice import VoiceQualificationRecorder
+from recovery.backup import BackupService
+from security.vault import SecretVault
+from security.owner_access import OwnerAccessStore
+from tools import benchmark as benchmark_tools
+from tools.builtins import register_builtin_tools
+from tools.registry import ToolRegistry
+from voice.realtime import RealtimeVoiceSession
+from voice.wake_phrase import WakePhraseGate
 
 
-@app.post("/api/ideas/{idea_id}/council")
-def run_council(idea_id: int) -> dict:
-    with connect(DB) as conn:
+def build_runtime():
+    events=EventBus(); telemetry=Telemetry(settings.data_dir/'telemetry.json'); preferences=Preferences(settings.data_dir/'preferences.json'); backups=BackupService(settings.data_dir)
+    memory=MemoryStore(settings.data_dir/'assistant.sqlite3'); models=GovernedModelRouter(settings,events=events,audit=memory.audit); models.set_owner_privacy(str(preferences.get('model_privacy_mode',settings.model_privacy_mode))); vector=VectorStore(settings.data_dir/'vectors.sqlite3',lambda text:models.embed(text,sensitivity='sensitive')); memory_engine=SecondBrain(memory,models,vector); second_brain=GovernedMemory(memory_engine,settings.data_dir/'memory-candidates.sqlite3',events=events,is_enabled=lambda: bool(preferences.get('memory_enabled',True)))
+    knowledge_store=KnowledgeStore(settings.data_dir/'knowledge.sqlite3',settings.data_dir/'knowledge'/'objects'); knowledge=KnowledgeAuthority(knowledge_store,events=events); device_registry=DeviceRegistry(settings.data_dir/'devices.sqlite3'); owner_access=OwnerAccessStore(settings.data_dir/'owner-access.sqlite3'); device_gateway=DeviceGateway(device_registry,events); continuity=ContinuityService(settings.data_dir/'continuity.sqlite3',events=events,second_brain=second_brain)
+    primary_thread=continuity.latest_thread()
+    if primary_thread is None: primary_thread_id=continuity.create_thread('Primary Vishnu Context',device_id='desktop',context={'surface':'desktop','topic':'current work'})
+    else: primary_thread_id=primary_thread['id']; continuity.set_active('desktop',primary_thread_id)
+    proactive=AttentionRelevanceEngine(settings.data_dir/'proactive.sqlite3',events=events,second_brain=second_brain,enabled=settings.proactive_enabled,interruptions_per_hour=settings.proactive_interruptions_per_hour,default_cooldown_seconds=settings.proactive_default_cooldown_seconds)
+    vault=SecretVault(settings.data_dir/'vault.json',settings.vault_password or None); integrations,adapters,oauth,oauth_providers=build_integrations(settings,vault); plugins=PluginManifestRegistry(settings.data_dir/'plugins'); plugins.load(); apns=APNsProvider(settings,device_registry,events); notifications=NotificationService(settings.data_dir/'notifications.sqlite3',device_registry,apns,events,owner_preferences=preferences); tools=ToolRegistry(settings); tools.set_autonomy_mode(str(preferences.get('autonomy_mode',settings.autonomy_mode)))
+    agent_executor=DurableAgentExecutor(models=models,tools=tools,memory=memory,events=events,second_brain=second_brain,knowledge=knowledge,telemetry=telemetry); executor=DurableApprovalTurnRuntime(agent_executor,continuity,settings.data_dir/'turn-runtime.sqlite3',events=events)
+    def context_provider():
+        latest=continuity.latest_thread(); return {'devices':device_registry.list(),'integrations':integrations.list(),'memory_count':len(second_brain.graph().get('nodes',[])),'continuity':latest or {},'focus_mode':bool(preferences.get('focus_mode',False))}
+    automations=AutomationEngine(settings.data_dir/'automations.sqlite3',executor=executor,events=events,context_provider=context_provider,default_timeout_seconds=settings.workflow_default_timeout_seconds,default_retries=settings.workflow_default_retries)
+    capability_objects=register_builtin_tools(tools,memory,settings,models=models,automation_engine=automations,apns=apns,second_brain=second_brain,events=events,proactive_engine=proactive,continuity_service=continuity,integration_adapters=adapters,memory_enabled=lambda: bool(preferences.get('memory_enabled',True)))
+    voice=RealtimeVoiceSession(models,executor,events); voice_qualification=VoiceQualificationRecorder(settings.data_dir/'voice-qualification.sqlite3',events=events); p3_qualification=P3QualificationProgram(settings.data_dir/'p3-qualification.sqlite3'); wake_phrase=WakePhraseGate(events,phrases=(str(preferences.get('wake_phrase','Hey Personal')),)); events.subscribe('voice.transcript',lambda event:wake_phrase.accept(event.get('text',''))); events.subscribe('state',lambda event:telemetry.increment(f"state.{event.get('state','unknown')}")); events.subscribe('voice.reply',lambda event:telemetry.increment('voice.replies'))
+    runtime={'settings':settings,'events':events,'runtime_state':events.runtime_state,'memory':memory,'models':models,'second_brain':second_brain,'knowledge':knowledge,'knowledge_store':knowledge_store,'vector_store':vector,'device_registry':device_registry,'owner_access':owner_access,'device_gateway':device_gateway,'continuity':continuity,'proactive':proactive,'tools':tools,'executor':executor,'turn_runtime':executor,'agent_executor':agent_executor,'automations':automations,'integrations':integrations,'integration_adapters':adapters,'oauth':oauth,'oauth_providers':oauth_providers,'plugins':plugins,'vault':vault,'voice':voice,'voice_qualification':voice_qualification,'p3_qualification':p3_qualification,'wake_phrase':wake_phrase,'apns':apns,'notifications':notifications,'telemetry':telemetry,'preferences':preferences,'backups':backups,'computer':capability_objects.get('computer'),'primary_continuity_thread_id':primary_thread_id}; p3_qualification.runtime=runtime
+    future=FutureIntelligenceProgram(settings.data_dir/'future-intelligence',runtime=runtime); runtime.update({'future_intelligence':future,'everyday_intelligence':future.everyday,'life_graph':future.life_graph,'personal_operations':future.operations,'world_understanding':future.world,'personal_ai_everywhere':future.everywhere,'hybrid_intelligence':future.hybrid,'advanced_autonomy':future.autonomy})
+    if hasattr(executor,'attach_autonomy'): executor.attach_autonomy(future.autonomy)
+    benchmark=CapabilityBenchmark(settings.data_dir/'capability-benchmark.sqlite3',runtime=runtime); model_evaluation=ModelDialogueEvaluation(settings.data_dir/'model-dialogue-evaluation.sqlite3',models,audit=memory.audit); scenarios=CompetitiveScenarioSuite(runtime,benchmark); runtime.update({'benchmark':benchmark,'model_evaluation':model_evaluation,'capability_scenarios':scenarios}); benchmark_tools.register(tools,benchmark,scenarios)
+    def append_continuity(kind,text,device_id=None,conversation_id=None,event_id=None):
+        # Canonical request-aware surfaces persist their own conversation events.
+        # Legacy/unscoped emitters fall back to the active continuity thread here.
+        if not text or conversation_id:return
+        source_device=str(device_id or 'desktop')
         try:
-            idea = get_idea(conn, idea_id)
-        except KeyError:
-            raise HTTPException(404, "idea not found") from None
-        result = debate(idea["title"], idea["seed"])
-        saved = save_council(conn, idea_id, result)
-        saved["voices"] = [voice.__dict__ for voice in result.voices]
-        return saved
+            thread=continuity.active_for_device(source_device)
+            if thread is None:thread=continuity.resume(source_device)['thread']
+            continuity.append(thread['id'],device_id=source_device,kind=kind,payload={'text':str(text)},event_id=str(event_id) if event_id else None)
+        except Exception:pass
+    events.subscribe('conversation.user',lambda event:append_continuity('user_message',event.get('text'),event.get('device_id'),event.get('conversation_id'),event.get('event_id') or event.get('message_id'))); events.subscribe('conversation.assistant',lambda event:append_continuity('assistant_message',event.get('text'),event.get('device_id'),event.get('conversation_id'),event.get('event_id') or event.get('message_id'))); events.subscribe('proactive.ingest',lambda event:proactive.consider(str(event.get('source','unknown')),dict(event.get('payload') or {}),context={**context_provider(),**dict(event.get('context') or {})})); events.subscribe('automation.failed',lambda event:proactive.consider('automation',{'kind':'failure','id':event.get('automation_id'),'failed':True,'importance':.7,'message':f"An automation failed: {event.get('error','unknown error')}"},context=context_provider())); events.subscribe('workflow.failed',lambda event:proactive.consider('workflow',{'kind':'failure','id':event.get('run_id'),'failed':True,'importance':.75,'message':f"A workflow needs attention: {event.get('error','workflow failed')}"},context=context_provider())); events.subscribe('workflow.approval_required',lambda event:proactive.consider('workflow',{'kind':'approval','id':event.get('run_id'),'needs_approval':True,'urgency':.7,'importance':.8,'message':f"A workflow is waiting for your approval to use {event.get('tool','a tool')}."},context=context_provider())); return runtime
 
 
-@app.post("/api/ideas/{idea_id}/decision")
-def set_decision(idea_id: int, body: DecisionIn) -> dict:
-    with connect(DB) as conn:
-        try:
-            return decide(conn, idea_id, body.status)
-        except KeyError:
-            raise HTTPException(404, "idea not found") from None
-        except ValueError as exc:
-            raise HTTPException(400, str(exc)) from None
-
-
-def main() -> None:
+def start_server(runtime):
+    if not settings.control_server_enabled:return
+    from server.api import create_app
     import uvicorn
-
-    uvicorn.run(
-        "app.main:app",
-        host=os.getenv("VISHNU2_HOST", "127.0.0.1"),
-        port=int(os.getenv("VISHNU2_PORT", "8787")),
-        reload=False,
-    )
+    app=create_app(runtime['executor'],settings,device_registry=runtime['device_registry'],device_gateway=runtime['device_gateway'],second_brain=runtime['second_brain'],automations=runtime['automations'],runtime=runtime); uvicorn.run(app,host=settings.control_server_host,port=settings.control_server_port,log_level='warning')
 
 
-if __name__ == "__main__":
-    main()
+def main():
+    from PyQt6.QtWidgets import QApplication
+    from desktop.floating_presence import FloatingPresence
+    # Keep the historical lazy MainWindow import contract for headless/cloud
+    # qualification while Stage 5 selects its canonical semantic-state wrapper.
+    from ui.main_window import MainWindow
+    from ui.canonical_main_window import CanonicalMainWindow
+    app=QApplication(sys.argv); app.setApplicationName('Vishnu'); runtime=build_runtime(); runtime['automations'].start()
+    if settings.control_server_enabled:threading.Thread(target=start_server,args=(runtime,),daemon=True).start()
+    window=CanonicalMainWindow(events=runtime['events'],executor=runtime['executor'],memory=runtime['memory'],runtime=runtime); window.show(); floating_presence=FloatingPresence(runtime=runtime); runtime['floating_presence']=floating_presence; floating_presence.show()
+    if runtime['preferences'].get('launch_voice_on_start'):window.toggle_voice()
+    code=app.exec(); floating_presence.close(); runtime['voice'].stop(); runtime['automations'].stop(); runtime['notifications'].close(); runtime['telemetry'].persist(); runtime['apns'].close(); return code
 
 
-PAGE = """<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Vishnu-2 AI</title>
-  <style>
-    :root { color-scheme: dark; --ink:#e8e4d9; --muted:#9a917f; --line:#3a3428; --gold:#d6b15a; --bg:#14120e; }
-    body { margin:0; font:16px/1.5 Georgia, serif; background:var(--bg); color:var(--ink); }
-    main { max-width:820px; margin:0 auto; padding:40px 20px 80px; }
-    h1 { font-weight:500; letter-spacing:.04em; margin-bottom:0; }
-    p.lead { color:var(--muted); margin-top:8px; }
-    form, article { border:1px solid var(--line); padding:16px; margin-top:18px; }
-    label { display:block; color:var(--muted); font-size:13px; margin-top:10px; }
-    input, textarea { width:100%; box-sizing:border-box; background:#1c1914; color:var(--ink); border:1px solid var(--line); padding:8px; font:inherit; }
-    button { margin-top:12px; background:transparent; color:var(--gold); border:1px solid var(--gold); padding:8px 12px; font:inherit; cursor:pointer; }
-    .status { color:var(--gold); font-size:13px; letter-spacing:.08em; text-transform:uppercase; }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Vishnu-2 AI</h1>
-    <p class="lead">An idea council. Four voices argue the claim before anything is built.</p>
-    <form id="new">
-      <label>Idea title</label>
-      <input name="title" required maxlength="160" placeholder="A weekly decision room for unfinished ideas" />
-      <label>Seed note</label>
-      <textarea name="seed" rows="4" maxlength="4000" placeholder="Who it is for, and what is still uncertain."></textarea>
-      <button type="submit">File the idea</button>
-    </form>
-    <section id="list"></section>
-  </main>
-  <script>
-    const list = document.querySelector('#list');
-    async function load() {
-      const ideas = await fetch('/api/ideas').then(r => r.json());
-      list.innerHTML = ideas.map(idea => `
-        <article>
-          <div class="status">${idea.status}</div>
-          <h2>${escapeHtml(idea.title)}</h2>
-          <p>${escapeHtml(idea.seed || '')}</p>
-          ${idea.decision ? `<p><strong>Decision.</strong> ${escapeHtml(idea.decision)}</p>` : ''}
-          ${idea.dissent ? `<p><strong>Dissent.</strong> ${escapeHtml(idea.dissent)}</p>` : ''}
-          ${idea.experiment ? `<p><strong>Experiment.</strong> ${escapeHtml(idea.experiment)}</p>` : ''}
-          <button data-council="${idea.id}">Run council</button>
-          <button data-status="decided" data-id="${idea.id}">Accept</button>
-          <button data-status="parked" data-id="${idea.id}">Park</button>
-        </article>
-      `).join('');
-    }
-    function escapeHtml(value) {
-      return String(value).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
-    }
-    document.querySelector('#new').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const data = new FormData(event.target);
-      await fetch('/api/ideas', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({title:data.get('title'), seed:data.get('seed')})});
-      event.target.reset();
-      load();
-    });
-    list.addEventListener('click', async (event) => {
-      const council = event.target.dataset.council;
-      const status = event.target.dataset.status;
-      if (council) await fetch(`/api/ideas/${council}/council`, {method:'POST'});
-      if (status) await fetch(`/api/ideas/${event.target.dataset.id}/decision`, {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({status})});
-      if (council || status) load();
-    });
-    load();
-  </script>
-</body>
-</html>
-"""
+if __name__=='__main__':raise SystemExit(main())
