@@ -36,6 +36,7 @@ from evo.senior_fullstack import build_senior_stack
 from evo.mind import goal_status, record_step, start_goal
 from evo.mind_planner import plan_cycle
 from evo.recover import recover
+from evo.sandbox_manager import open_sandbox, qualify, run_in_sandbox
 from evo.mind import interrupt_step
 from evo.media import music_command
 from evo.phone import screen_call
@@ -276,3 +277,13 @@ def register(reg, settings, models=None):
         return recover(Path(getattr(settings, 'data_dir', root)), str(payload.get('conversation_id') or ''), dict(payload.get('evidence') or {}))
     reg.register(Tool('mind_interrupt', 'Mark the current step interrupted', mind_interrupt, Risk.REVERSIBLE))
     reg.register(Tool('mind_recover', 'Resume a goal from outside evidence without repeating a finished step', mind_recover, Risk.READ_ONLY))
+
+    def sand_open(payload):
+        return open_sandbox(Path(getattr(settings, 'data_dir', root)), str(payload.get('goal') or 'experiment'))
+    def sand_run(payload):
+        return run_in_sandbox(Path(getattr(settings, 'data_dir', root)), str(payload.get('run_id') or ''), str(payload.get('source') or ''))
+    def sand_qualify(payload):
+        return qualify(bool(payload.get('claimed_better')), bool(payload.get('evidence_better')))
+    reg.register(Tool('sandbox_open', 'Open an experiment workspace without vault access', sand_open, Risk.REVERSIBLE))
+    reg.register(Tool('sandbox_run', 'Run code inside an experiment workspace', sand_run, Risk.REVERSIBLE))
+    reg.register(Tool('sandbox_qualify', 'Promote only when qualification evidence says the candidate is better', sand_qualify, Risk.READ_ONLY))
