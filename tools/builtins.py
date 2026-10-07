@@ -53,7 +53,7 @@ def register_builtin_tools(
     web.register(registry)
     system.register(registry)
     from tools import evo_tools
-    evo_tools.register(registry, settings)
+    evo_tools.register(registry, settings, models=models)
     memory_tools.register(registry, memory, second_brain=second_brain, is_enabled=memory_enabled)
     documents.register(registry, settings)
     if not bool(getattr(settings, 'hosted_runtime', False)):

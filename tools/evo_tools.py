@@ -16,12 +16,13 @@ from evo.python_tool import run_python
 from evo.image_tool import create_image
 from evo.download_tool import download_file
 from evo.read_tool import read_anything
+from evo.vision_tool import describe_image
 from evo.media import music_command
 from evo.phone import screen_call
 from tools.registry import Risk, Tool
 
 
-def register(reg, settings):
+def register(reg, settings, models=None):
     root = Path(getattr(settings, 'base_dir', Path.cwd()))
 
     def system_snapshot(_):
@@ -107,3 +108,7 @@ def register(reg, settings):
     def own_read(payload):
         return read_anything(str(payload.get('target') or ''), Path(getattr(settings, 'data_dir', root)))
     reg.register(Tool('owner_read', 'Read a website, text file, PDF, or image', own_read, Risk.READ_ONLY))
+
+    def own_vision(payload):
+        return describe_image(str(payload.get('path') or ''), str(payload.get('question') or ''), models)
+    reg.register(Tool('owner_vision', 'Describe an image with the configured vision model', own_vision, Risk.READ_ONLY))
