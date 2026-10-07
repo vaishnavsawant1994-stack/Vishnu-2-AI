@@ -5,7 +5,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-STATES = ('APPLIED', 'NOT_APPLIED', 'PARTIALLY_APPLIED', 'UNKNOWN', 'CONFLICTED')
+STATES = ('APPLIED', 'NOT_APPLIED', 'PARTIALLY_APPLIED', 'IN_PROGRESS', 'CONFLICTED', 'UNKNOWN')
 
 
 def file_write(path: Path, expected_text: str = '') -> dict:
@@ -38,4 +38,27 @@ def reconcile(kind: str, target: str, expected: str = '') -> dict:
     if kind == 'database_write':
         table, count = expected.split(':', 1)
         return database_write(Path(target), table, int(count))
+    if kind == 'github_pr':
+        owner, repo, head = (expected.split(':', 2) + ['', '', ''])[:3]
+        return github_pr(owner, repo, head, target)
     return provider_status(kind)
+
+
+def github_pr(owner: str, repo: str, head: str, token: str = '') -> dict:
+    """Ask GitHub whether a matching pull request exists. No token means unknown."""
+    if not token:
+        return {'state': 'UNKNOWN', 'provider': 'github', 'reason': 'no token', 'retry_safe': False}
+    import json
+    import urllib.request
+    url = f'https://api.github.com/repos/{owner}/{repo}/pulls?state=open&per_page=20'
+    request = urllib.request.Request(url, headers={'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json', 'User-Agent': 'vishnu-2'})
+    try:
+        with urllib.request.urlopen(request, timeout=8) as response:
+            pulls = json.loads(response.read().decode('utf-8'))
+    except Exception as exc:
+        return {'state': 'UNKNOWN', 'provider': 'github', 'reason': str(exc)[:120], 'retry_safe': False}
+    for pull in pulls:
+        ref = str(pull.get('head', {}).get('ref', ''))
+        if ref == head:
+            return {'state': 'APPLIED', 'provider': 'github', 'external_id': pull.get('number'), 'retry_safe': False}
+    return {'state': 'NOT_APPLIED', 'provider': 'github', 'retry_safe': True}
