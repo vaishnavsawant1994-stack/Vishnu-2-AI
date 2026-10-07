@@ -18,10 +18,10 @@ from evo.download_tool import download_file
 from evo.read_tool import read_anything
 from evo.vision_tool import describe_image
 from evo.phone_screen import add_line, append_audio, capture_audio, finish_screen, start_screen
-from evo.workspace_memory import recall, remember
+from evo.workspace_memory import recall as recall_workspace, remember
 from evo.debugger import debug_project
 from evo.desktop_open import open_file
-from evo.board import add_agent, add_task, design_check, list_agents, list_tasks, recall, retain, storyboard, topic_script, update_task
+from evo.board import add_agent, add_task, design_check, list_agents, list_tasks, recall as recall_board, retain, storyboard, topic_script, update_task
 from evo.similar.work import assign, comment, create_task
 from evo.similar.story import write_story
 from evo.similar.design import review
@@ -136,7 +136,7 @@ def register(reg, settings, models=None):
     def phone_finish(payload):
         return finish_screen(str(payload.get('call_id') or ''), Path(getattr(settings, 'data_dir', root)))
     reg.register(Tool('phone_screen_start', 'Start screening a call and open a transcript', phone_start, Risk.EXTERNAL_SIDE_EFFECT))
-    reg.register(Tool('phone_screen_line', 'Add a caller or Vishnu line to the screened call', phone_line, Risk.READ_ONLY))
+    reg.register(Tool('phone_screen_line', 'Add a caller or Vishnu line to the screened call', phone_line, Risk.REVERSIBLE))
     def phone_capture(payload):
         raw = payload.get('audio') or b''
         if isinstance(raw, str):
@@ -177,7 +177,7 @@ def register(reg, settings, models=None):
     def memory_add(payload):
         return remember(Path(getattr(settings, 'data_dir', root)), str(payload.get('kind') or 'note'), str(payload.get('text') or ''))
     def memory_list(_):
-        return recall(Path(getattr(settings, 'data_dir', root)))
+        return recall_workspace(Path(getattr(settings, 'data_dir', root)))
     def debug(payload):
         return debug_project(Path(getattr(settings, 'data_dir', root)), str(payload.get('path') or ''))
     def desktop_open(payload):
@@ -187,7 +187,7 @@ def register(reg, settings, models=None):
         if isinstance(raw, str):
             raw = raw.encode('utf-8')
         return append_audio(str(payload.get('call_id') or ''), Path(getattr(settings, 'data_dir', root)), bytes(raw))
-    reg.register(Tool('workspace_remember', 'Remember a coding workspace note', memory_add, Risk.READ_ONLY))
+    reg.register(Tool('workspace_remember', 'Remember a coding workspace note', memory_add, Risk.REVERSIBLE))
     reg.register(Tool('workspace_recall', 'Recall coding workspace notes', memory_list, Risk.READ_ONLY))
     reg.register(Tool('coder_debug', 'Run a workspace test and record the failure', debug, Risk.REVERSIBLE))
     reg.register(Tool('desktop_open', 'Open a file with the machine default app', desktop_open, Risk.EXTERNAL_SIDE_EFFECT))
@@ -202,23 +202,23 @@ def register(reg, settings, models=None):
     def memory_retain(payload):
         return retain(Path(getattr(settings, 'data_dir', root)), str(payload.get('text') or ''))
     def memory_recall(payload):
-        return recall(Path(getattr(settings, 'data_dir', root)), str(payload.get('query') or ''))
+        return recall_board(Path(getattr(settings, 'data_dir', root)), str(payload.get('query') or ''))
     def design(payload):
         return design_check(str(payload.get('text') or ''))
     def board_story(payload):
         return storyboard(str(payload.get('title') or 'story'))
     def script(payload):
         return topic_script(str(payload.get('topic') or 'topic'))
-    reg.register(Tool('task_add', 'Add a work task', task_add, Risk.READ_ONLY))
+    reg.register(Tool('task_add', 'Add a work task', task_add, Risk.REVERSIBLE))
     reg.register(Tool('task_list', 'List work tasks', task_list, Risk.READ_ONLY))
     def task_update(payload):
         return update_task(Path(getattr(settings, 'data_dir', root)), int(payload.get('id') or 0), str(payload.get('status') or 'open'))
     def agent_list(_):
         return list_agents(Path(getattr(settings, 'data_dir', root)))
-    reg.register(Tool('task_update', 'Move a task to open, doing, or done', task_update, Risk.READ_ONLY))
+    reg.register(Tool('task_update', 'Move a task to open, doing, or done', task_update, Risk.REVERSIBLE))
     reg.register(Tool('agent_list', 'List the agent roster', agent_list, Risk.READ_ONLY))
-    reg.register(Tool('agent_add', 'Add an agent to the roster', agent_add, Risk.READ_ONLY))
-    reg.register(Tool('memory_retain', 'Store a learned memory', memory_retain, Risk.READ_ONLY))
+    reg.register(Tool('agent_add', 'Add an agent to the roster', agent_add, Risk.REVERSIBLE))
+    reg.register(Tool('memory_retain', 'Store a learned memory', memory_retain, Risk.REVERSIBLE))
     reg.register(Tool('memory_recall', 'Recall a learned memory by words', memory_recall, Risk.READ_ONLY))
     reg.register(Tool('design_check', 'Check a design note for heading, action, and failure', design, Risk.READ_ONLY))
     reg.register(Tool('storyboard', 'Write an HTML storyboard without rendering video', board_story, Risk.READ_ONLY))
@@ -235,9 +235,9 @@ def register(reg, settings, models=None):
         return write_story(Path(getattr(settings, 'data_dir', root)), str(payload.get('title') or 'story'), [str(item) for item in scenes])
     def similar_review(payload):
         return review(str(payload.get('text') or ''))
-    reg.register(Tool('similar_task', 'Create a tracked task with comments', similar_task, Risk.READ_ONLY))
-    reg.register(Tool('similar_comment', 'Add a comment to a tracked task', similar_comment, Risk.READ_ONLY))
-    reg.register(Tool('similar_assign', 'Assign an agent and mark the task doing', similar_assign, Risk.READ_ONLY))
+    reg.register(Tool('similar_task', 'Create a tracked task with comments', similar_task, Risk.REVERSIBLE))
+    reg.register(Tool('similar_comment', 'Add a comment to a tracked task', similar_comment, Risk.REVERSIBLE))
+    reg.register(Tool('similar_assign', 'Assign an agent and mark the task doing', similar_assign, Risk.REVERSIBLE))
     reg.register(Tool('similar_story', 'Write a multi-scene HTML story and narration', similar_story, Risk.REVERSIBLE))
     reg.register(Tool('similar_review', 'Review a design note for action, failure, and limit', similar_review, Risk.READ_ONLY))
 
