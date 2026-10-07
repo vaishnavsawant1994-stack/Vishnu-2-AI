@@ -1,7 +1,5 @@
-# Governed self-improvement
+# Self-improvement
 
-Vishnu-2 AI can learn from its own runs. Learning is a ledger, not a permission upgrade.
+Lessons from a rejected tool, an unverified result, or an owner correction are applied immediately to the next plan. No separate accept step is required for those lessons.
 
-An episode records the goal, the plan, and the outcome: completed, unverified, rejected, or corrected. A rejection or a failed verification creates a proposed lesson. An owner correction creates one too. A lesson changes future planning only after the owner accepts it. Accepted lessons are added to planner context and are labeled untrusted preferences.
-
-A lesson cannot change autonomy mode, the permission engine, the vault, qualification gates, or emergency stop. Proposals are planner-context only. The model cannot accept its own lesson.
+The agent still cannot rewrite its off switch. Emergency stop, the permission engine, the approval store, the vault, and qualification gates are protected. A lesson or code proposal that targets those is refused. Recorded code proposals for other files are notes for a later edit; they are not applied inside the model process.
