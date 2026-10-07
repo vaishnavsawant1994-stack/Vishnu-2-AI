@@ -83,3 +83,18 @@ def topic_script(topic: str) -> dict:
         'script': f'A short narration about {topic[:120]}. State the fact, then the next step.',
         'video': False,
     }
+
+
+def update_task(work: Path, task_id: int, status: str) -> dict:
+    if status not in {'open', 'doing', 'done'}:
+        return {'ok': False, 'reason': 'status must be open, doing, or done'}
+    with _db(work) as conn:
+        cur = conn.execute('UPDATE tasks SET status = ? WHERE id = ?', (status, task_id))
+        conn.commit()
+    return {'ok': cur.rowcount == 1, 'tool': 'task_board', 'id': task_id, 'status': status}
+
+
+def list_agents(work: Path) -> dict:
+    with _db(work) as conn:
+        rows = conn.execute('SELECT name, role FROM agents ORDER BY id DESC').fetchall()
+    return {'ok': True, 'agents': [dict(row) for row in rows]}

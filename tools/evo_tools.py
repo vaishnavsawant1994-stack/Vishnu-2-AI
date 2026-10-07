@@ -21,7 +21,7 @@ from evo.phone_screen import add_line, append_audio, capture_audio, finish_scree
 from evo.workspace_memory import recall, remember
 from evo.debugger import debug_project
 from evo.desktop_open import open_file
-from evo.board import add_agent, add_task, design_check, list_tasks, recall, retain, storyboard, topic_script
+from evo.board import add_agent, add_task, design_check, list_agents, list_tasks, recall, retain, storyboard, topic_script, update_task
 from evo.coder import list_project, read_source, run_project, write_source
 from evo.fullstack import build_app
 from evo.python_dev import build_python
@@ -205,6 +205,12 @@ def register(reg, settings, models=None):
         return topic_script(str(payload.get('topic') or 'topic'))
     reg.register(Tool('task_add', 'Add a work task', task_add, Risk.READ_ONLY))
     reg.register(Tool('task_list', 'List work tasks', task_list, Risk.READ_ONLY))
+    def task_update(payload):
+        return update_task(Path(getattr(settings, 'data_dir', root)), int(payload.get('id') or 0), str(payload.get('status') or 'open'))
+    def agent_list(_):
+        return list_agents(Path(getattr(settings, 'data_dir', root)))
+    reg.register(Tool('task_update', 'Move a task to open, doing, or done', task_update, Risk.READ_ONLY))
+    reg.register(Tool('agent_list', 'List the agent roster', agent_list, Risk.READ_ONLY))
     reg.register(Tool('agent_add', 'Add an agent to the roster', agent_add, Risk.READ_ONLY))
     reg.register(Tool('memory_retain', 'Store a learned memory', memory_retain, Risk.READ_ONLY))
     reg.register(Tool('memory_recall', 'Recall a learned memory by words', memory_recall, Risk.READ_ONLY))
