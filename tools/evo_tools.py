@@ -10,6 +10,7 @@ from evo.heal import repair_note
 from evo.home import home_command
 from evo.local import make_skill, processes, set_volume, snapshot
 from evo.search import search_web
+from evo.skills import calculate, now, read_page
 from evo.media import music_command
 from evo.phone import screen_call
 from tools.registry import Risk, Tool
@@ -64,3 +65,12 @@ def register(reg, settings):
     def web_search(payload):
         return search_web(str(payload.get('query') or ''))
     reg.register(Tool('web_search', 'Search the public web and return result titles', web_search, Risk.READ_ONLY))
+    def calc(payload):
+        return calculate(str(payload.get('expression') or '0'))
+    def clock(_):
+        return now()
+    def page(payload):
+        return read_page(str(payload.get('url') or ''))
+    reg.register(Tool('calculate', 'Evaluate an arithmetic expression', calc, Risk.READ_ONLY))
+    reg.register(Tool('current_time', 'Return the current UTC time', clock, Risk.READ_ONLY))
+    reg.register(Tool('read_page', 'Read public text from an https page', page, Risk.READ_ONLY))
