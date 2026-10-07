@@ -80,9 +80,37 @@ def compare_baseline(baseline: float, candidate: float, security_passed: bool) -
     }
 
 
-LEVELS = {'NONE': 0, 'WORKSPACE': 1, 'RESTRICTED_PROCESS': 2, 'CONTAINER': 3, 'VM': 4}
+LEVELS = {'NONE': 0, 'WORKSPACE': 1, 'PROCESS': 2, 'CONTAINER': 3, 'VM': 4, 'REMOTE_ISOLATED': 5}
 
 def require_isolation(required: str, available: str = 'WORKSPACE') -> dict:
     if LEVELS[required] > LEVELS[available]:
         return {'ok': False, 'available': available, 'required': required, 'reason': 'this machine cannot isolate that experiment'}
     return {'ok': True, 'available': available, 'required': required}
+
+
+def discover_capabilities(container: bool = False, vm: bool = False) -> dict:
+    return {
+        'available_isolation': 'VM' if vm else 'CONTAINER' if container else 'WORKSPACE',
+        'workspace': True,
+        'process_limits': False,
+        'container': container,
+        'vm': vm,
+        'cpu_limit': False,
+        'memory_limit': False,
+        'network_isolation': False,
+        'stripped_environment': True,
+        'credentials_injected': False,
+    }
+
+
+def admit(required: str, capabilities: dict) -> dict:
+    decision = require_isolation(required, capabilities['available_isolation'])
+    if not decision['ok']:
+        decision['failure'] = 'INSUFFICIENT_ISOLATION'
+        decision['downgraded'] = False
+    return decision
+
+
+def qualify_experiment(baseline: float, candidate: float, security_passed: bool, isolation_satisfied: bool) -> dict:
+    promoted = candidate > baseline and security_passed and isolation_satisfied
+    return {'promoted': promoted, 'reason': 'qualified' if promoted else 'score, security, or isolation failed'}
