@@ -4,9 +4,9 @@ from evo.image_tool import create_image
 from evo.python_tool import run_python
 
 
-def test_python_runs_a_print_and_blocks_the_vault():
-    assert '3' in run_python('print(1 + 2)')['stdout']
-    blocked = run_python('import security.vault')
+def test_python_runs_a_print_and_blocks_the_vault(tmp_path: Path):
+    assert '3' in run_python('print(1 + 2)', tmp_path)['stdout']
+    blocked = run_python('import security.vault', tmp_path)
     assert blocked['ok'] is False
 
 

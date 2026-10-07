@@ -15,6 +15,8 @@ def run_python(source: str, work: Path, timeout: int = 8) -> dict:
         return {'ok': False, 'tool': 'owner_python', 'reason': 'empty'}
     if len(cleaned) > 4000:
         return {'ok': False, 'tool': 'owner_python', 'reason': 'code is too long'}
+    if any(word in cleaned.lower() for word in ('security.vault', 'core.permissions', 'emergency_stop')):
+        return {'ok': False, 'tool': 'owner_python', 'reason': 'vault and stop code are blocked'}
     folder = Path(work) / 'python-runs' / uuid.uuid4().hex
     folder.mkdir(parents=True, exist_ok=True)
     script = folder / 'main.py'
