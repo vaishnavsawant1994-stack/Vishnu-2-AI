@@ -21,6 +21,7 @@ from evo.phone_screen import add_line, append_audio, capture_audio, finish_scree
 from evo.workspace_memory import recall, remember
 from evo.debugger import debug_project
 from evo.desktop_open import open_file
+from evo.board import add_agent, add_task, design_check, list_tasks, recall, retain, storyboard, topic_script
 from evo.coder import list_project, read_source, run_project, write_source
 from evo.fullstack import build_app
 from evo.python_dev import build_python
@@ -185,3 +186,28 @@ def register(reg, settings, models=None):
     reg.register(Tool('coder_debug', 'Run a workspace test and record the failure', debug, Risk.REVERSIBLE))
     reg.register(Tool('desktop_open', 'Open a file with the machine default app', desktop_open, Risk.EXTERNAL_SIDE_EFFECT))
     reg.register(Tool('phone_screen_stream', 'Append a live audio chunk to a screened call', phone_stream, Risk.EXTERNAL_SIDE_EFFECT))
+
+    def task_add(payload):
+        return add_task(Path(getattr(settings, 'data_dir', root)), str(payload.get('title') or 'task'))
+    def task_list(_):
+        return list_tasks(Path(getattr(settings, 'data_dir', root)))
+    def agent_add(payload):
+        return add_agent(Path(getattr(settings, 'data_dir', root)), str(payload.get('name') or 'agent'), str(payload.get('role') or 'worker'))
+    def memory_retain(payload):
+        return retain(Path(getattr(settings, 'data_dir', root)), str(payload.get('text') or ''))
+    def memory_recall(payload):
+        return recall(Path(getattr(settings, 'data_dir', root)), str(payload.get('query') or ''))
+    def design(payload):
+        return design_check(str(payload.get('text') or ''))
+    def board_story(payload):
+        return storyboard(str(payload.get('title') or 'story'))
+    def script(payload):
+        return topic_script(str(payload.get('topic') or 'topic'))
+    reg.register(Tool('task_add', 'Add a work task', task_add, Risk.READ_ONLY))
+    reg.register(Tool('task_list', 'List work tasks', task_list, Risk.READ_ONLY))
+    reg.register(Tool('agent_add', 'Add an agent to the roster', agent_add, Risk.READ_ONLY))
+    reg.register(Tool('memory_retain', 'Store a learned memory', memory_retain, Risk.READ_ONLY))
+    reg.register(Tool('memory_recall', 'Recall a learned memory by words', memory_recall, Risk.READ_ONLY))
+    reg.register(Tool('design_check', 'Check a design note for heading, action, and failure', design, Risk.READ_ONLY))
+    reg.register(Tool('storyboard', 'Write an HTML storyboard without rendering video', board_story, Risk.READ_ONLY))
+    reg.register(Tool('topic_script', 'Write a narration script without making a video', script, Risk.READ_ONLY))
