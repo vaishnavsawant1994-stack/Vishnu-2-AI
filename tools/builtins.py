@@ -52,6 +52,8 @@ def register_builtin_tools(
     google_write.register(registry, integration_adapters)
     web.register(registry)
     system.register(registry)
+    from tools import evo_tools
+    evo_tools.register(registry, settings)
     memory_tools.register(registry, memory, second_brain=second_brain, is_enabled=memory_enabled)
     documents.register(registry, settings)
     if not bool(getattr(settings, 'hosted_runtime', False)):
