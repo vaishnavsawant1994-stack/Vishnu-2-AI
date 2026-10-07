@@ -22,6 +22,10 @@ def open_sandbox(work: Path, goal: str) -> dict:
         'stop': 'denied',
         'credentials': 'denied',
         'promote': 'qualification required',
+        'cpu': 'unset',
+        'memory': 'unset',
+        'network': 'default deny',
+        'isolation': 'workspace only',
     }
     (folder / 'manifest.txt').write_text('\n'.join(f'{key}: {value}' for key, value in manifest.items()), encoding='utf-8')
     return {'ok': True, 'tool': 'sandbox', 'run_id': run_id, 'path': str(folder), 'vault': 'denied'}
@@ -57,4 +61,17 @@ def qualify(claimed_better: bool, evidence_better: bool) -> dict:
         'evidence_better': evidence_better,
         'promoted': promoted,
         'reason': 'qualification evidence' if promoted else 'a claim is not proof',
+    }
+
+
+def compare_baseline(baseline: float, candidate: float, security_passed: bool) -> dict:
+    """Compare a frozen baseline with a candidate. The candidate does not supply the scores."""
+    better = candidate > baseline and security_passed
+    return {
+        'ok': True,
+        'baseline': baseline,
+        'candidate': candidate,
+        'security_passed': security_passed,
+        'promoted': better,
+        'reason': 'independent comparison' if better else 'not better than the frozen baseline',
     }
