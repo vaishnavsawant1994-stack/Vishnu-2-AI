@@ -34,6 +34,7 @@ from evo.python_dev import build_python
 from evo.senior_python import build_senior
 from evo.senior_fullstack import build_senior_stack
 from evo.mind import goal_status, record_step, start_goal
+from evo.mind_planner import plan_cycle
 from evo.media import music_command
 from evo.phone import screen_call
 from tools.registry import Risk, Tool
@@ -262,3 +263,7 @@ def register(reg, settings, models=None):
     reg.register(Tool('mind_start', 'Start a goal with completion criteria', mind_start, Risk.REVERSIBLE))
     reg.register(Tool('mind_step', 'Record a hypothesis, action, and verification', mind_step, Risk.REVERSIBLE))
     reg.register(Tool('mind_status', 'Say whether a goal is complete or must continue', mind_status, Risk.READ_ONLY))
+
+    def mind_plan(payload):
+        return plan_cycle(Path(getattr(settings, 'data_dir', root)), str(payload.get('title') or 'goal'), list(payload.get('criteria') or []), str(payload.get('hypothesis') or ''), str(payload.get('action') or ''), payload.get('expected'), payload.get('actual'), list(payload.get('met') or []), str(payload.get('blocked') or ''))
+    reg.register(Tool('mind_plan', 'Run one goal cycle and return continue, complete, or blocked', mind_plan, Risk.REVERSIBLE))

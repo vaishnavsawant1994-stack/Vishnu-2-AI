@@ -82,3 +82,13 @@ def goal_status(work: Path, goal_id: int, met: list[str]) -> dict:
         'lesson': row['lesson'],
         'complete': status == 'complete',
     }
+
+
+def mark_blocked(work: Path, goal_id: int, reason: str) -> dict:
+    with _connect(work) as conn:
+        row = conn.execute('SELECT id FROM goals WHERE id = ?', (goal_id,)).fetchone()
+        if row is None:
+            return {'ok': False, 'reason': 'goal not found'}
+        conn.execute("UPDATE goals SET status = 'blocked', lesson = ? WHERE id = ?", (reason[:240], goal_id))
+        conn.commit()
+    return {'ok': True, 'tool': 'mind', 'id': goal_id, 'status': 'blocked', 'reason': reason[:240], 'stop_cleared': False}
