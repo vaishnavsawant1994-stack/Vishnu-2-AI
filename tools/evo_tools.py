@@ -25,6 +25,7 @@ from evo.board import add_agent, add_task, design_check, list_agents, list_tasks
 from evo.similar.work import assign, comment, create_task
 from evo.similar.story import write_story
 from evo.similar.design import review
+from evo.similar.suite import run_suite
 from evo.similar.sandbox import run_sandbox
 from evo.similar.reach import reach
 from evo.coder import list_project, read_source, run_project, write_source
@@ -246,3 +247,7 @@ def register(reg, settings, models=None):
         return reach(str(payload.get('url') or ''))
     reg.register(Tool('sandbox_run', 'Run a Python file in the coding workspace', sand, Risk.REVERSIBLE))
     reg.register(Tool('page_reach', 'Read one public https page without crawling', page_reach, Risk.READ_ONLY))
+
+    def suite(payload):
+        return run_suite(Path(getattr(settings, 'data_dir', root)), str(payload.get('title') or 'Job'))
+    reg.register(Tool('similar_suite', 'Run the original task, design, and story jobs together', suite, Risk.REVERSIBLE))
