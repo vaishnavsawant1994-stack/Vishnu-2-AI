@@ -125,3 +125,17 @@ def capture_audio(call_id: str, work: Path, audio: bytes, seconds: int = 5) -> d
         'live': True,
         'carrier': False,
     }
+
+
+def append_audio(call_id: str, work: Path, chunk: bytes) -> dict:
+    """Append a live carrier chunk to the call clip."""
+    if not chunk:
+        return {'ok': False, 'reason': 'empty audio chunk'}
+    if len(chunk) > 1_000_000:
+        return {'ok': False, 'reason': 'chunk is too large'}
+    folder = Path(work) / 'call-audio'
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f'{call_id}.wav'
+    with path.open('ab') as handle:
+        handle.write(chunk)
+    return {'ok': True, 'tool': 'owner_phone', 'call_id': call_id, 'bytes': path.stat().st_size, 'streamed': True}

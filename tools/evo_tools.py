@@ -17,7 +17,10 @@ from evo.image_tool import create_image
 from evo.download_tool import download_file
 from evo.read_tool import read_anything
 from evo.vision_tool import describe_image
-from evo.phone_screen import add_line, capture_audio, finish_screen, start_screen
+from evo.phone_screen import add_line, append_audio, capture_audio, finish_screen, start_screen
+from evo.workspace_memory import recall, remember
+from evo.debugger import debug_project
+from evo.desktop_open import open_file
 from evo.coder import list_project, read_source, run_project, write_source
 from evo.fullstack import build_app
 from evo.python_dev import build_python
@@ -163,3 +166,22 @@ def register(reg, settings, models=None):
     def senior_stack(payload):
         return build_senior_stack(Path(getattr(settings, 'data_dir', root)), str(payload.get('name') or 'app'))
     reg.register(Tool('senior_fullstack', 'Create a reviewed page, API, database, and failure tests', senior_stack, Risk.REVERSIBLE))
+
+    def memory_add(payload):
+        return remember(Path(getattr(settings, 'data_dir', root)), str(payload.get('kind') or 'note'), str(payload.get('text') or ''))
+    def memory_list(_):
+        return recall(Path(getattr(settings, 'data_dir', root)))
+    def debug(payload):
+        return debug_project(Path(getattr(settings, 'data_dir', root)), str(payload.get('path') or ''))
+    def desktop_open(payload):
+        return open_file(str(payload.get('path') or ''))
+    def phone_stream(payload):
+        raw = payload.get('chunk') or b''
+        if isinstance(raw, str):
+            raw = raw.encode('utf-8')
+        return append_audio(str(payload.get('call_id') or ''), Path(getattr(settings, 'data_dir', root)), bytes(raw))
+    reg.register(Tool('workspace_remember', 'Remember a coding workspace note', memory_add, Risk.READ_ONLY))
+    reg.register(Tool('workspace_recall', 'Recall coding workspace notes', memory_list, Risk.READ_ONLY))
+    reg.register(Tool('coder_debug', 'Run a workspace test and record the failure', debug, Risk.REVERSIBLE))
+    reg.register(Tool('desktop_open', 'Open a file with the machine default app', desktop_open, Risk.EXTERNAL_SIDE_EFFECT))
+    reg.register(Tool('phone_screen_stream', 'Append a live audio chunk to a screened call', phone_stream, Risk.EXTERNAL_SIDE_EFFECT))
