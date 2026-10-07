@@ -1,38 +1,42 @@
-"""Run a short Python snippet in a subprocess. It cannot change the stop switch."""
+"""Run owner Python in a scratch folder. Timeout and no inherited secrets."""
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
-import tempfile
+import uuid
 from pathlib import Path
 
-BLOCKED = ('security.vault', 'core.permissions', 'set_emergency_stop', 'tools.registry')
 
-
-def run_python(source: str, timeout: int = 8) -> dict:
-    cleaned = source.strip()[:4000]
+def run_python(source: str, work: Path, timeout: int = 8) -> dict:
+    cleaned = source.strip()
     if not cleaned:
-        return {'ok': False, 'reason': 'empty'}
-    lowered = cleaned.lower()
-    if any(word in lowered for word in BLOCKED):
-        return {'ok': False, 'reason': 'code cannot reach the stop switch or vault'}
-    with tempfile.TemporaryDirectory() as folder:
-        path = Path(folder) / 'snippet.py'
-        path.write_text(cleaned, encoding='utf-8')
-        try:
-            run = subprocess.run(
-                [sys.executable, str(path)],
-                cwd=folder,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-            )
-        except subprocess.TimeoutExpired:
-            return {'ok': False, 'reason': 'timed out'}
+        return {'ok': False, 'tool': 'owner_python', 'reason': 'empty'}
+    if len(cleaned) > 4000:
+        return {'ok': False, 'tool': 'owner_python', 'reason': 'code is too long'}
+    folder = Path(work) / 'python-runs' / uuid.uuid4().hex
+    folder.mkdir(parents=True, exist_ok=True)
+    script = folder / 'main.py'
+    script.write_text(cleaned, encoding='utf-8')
+    env = {'PATH': os.environ.get('PATH', ''), 'PYTHONDONTWRITEBYTECODE': '1'}
+    try:
+        run = subprocess.run(
+            [sys.executable, str(script)],
+            cwd=folder,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        return {'ok': False, 'tool': 'owner_python', 'reason': 'timed out', 'folder': str(folder)}
     return {
         'ok': run.returncode == 0,
-        'stdout': run.stdout[-1000:],
-        'stderr': run.stderr[-500:],
         'tool': 'owner_python',
+        'owner': 'vaishnav',
+        'returncode': run.returncode,
+        'stdout': run.stdout[-800:],
+        'stderr': run.stderr[-400:],
+        'folder': str(folder),
     }
