@@ -21,6 +21,7 @@ from evo.phone_screen import add_line, capture_audio, finish_screen, start_scree
 from evo.coder import list_project, read_source, run_project, write_source
 from evo.fullstack import build_app
 from evo.python_dev import build_python
+from evo.senior_python import build_senior
 from evo.media import music_command
 from evo.phone import screen_call
 from tools.registry import Risk, Tool
@@ -153,3 +154,7 @@ def register(reg, settings, models=None):
     def python_dev(payload):
         return build_python(Path(getattr(settings, 'data_dir', root)), str(payload.get('name') or 'tool'))
     reg.register(Tool('python_develop', 'Create a Python package, function, and test in the coding workspace', python_dev, Risk.REVERSIBLE))
+
+    def senior(payload):
+        return build_senior(Path(getattr(settings, 'data_dir', root)), str(payload.get('name') or 'service'))
+    reg.register(Tool('senior_python', 'Create a typed Python service with validation, errors, and failure tests', senior, Risk.REVERSIBLE))
