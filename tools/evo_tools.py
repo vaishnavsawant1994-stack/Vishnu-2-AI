@@ -22,6 +22,7 @@ from evo.coder import list_project, read_source, run_project, write_source
 from evo.fullstack import build_app
 from evo.python_dev import build_python
 from evo.senior_python import build_senior
+from evo.senior_fullstack import build_senior_stack
 from evo.media import music_command
 from evo.phone import screen_call
 from tools.registry import Risk, Tool
@@ -158,3 +159,7 @@ def register(reg, settings, models=None):
     def senior(payload):
         return build_senior(Path(getattr(settings, 'data_dir', root)), str(payload.get('name') or 'service'))
     reg.register(Tool('senior_python', 'Create a typed Python service with validation, errors, and failure tests', senior, Risk.REVERSIBLE))
+
+    def senior_stack(payload):
+        return build_senior_stack(Path(getattr(settings, 'data_dir', root)), str(payload.get('name') or 'app'))
+    reg.register(Tool('senior_fullstack', 'Create a reviewed page, API, database, and failure tests', senior_stack, Risk.REVERSIBLE))
