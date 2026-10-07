@@ -9,6 +9,7 @@ from evo.geo import route_plan
 from evo.heal import repair_note
 from evo.home import home_command
 from evo.local import make_skill, processes, set_volume, snapshot
+from evo.search import search_web
 from evo.media import music_command
 from evo.phone import screen_call
 from tools.registry import Risk, Tool
@@ -60,3 +61,6 @@ def register(reg, settings):
     def external(_):
         return external_status(__import__('os').getenv('BRAHMA_HOME'), root)
     reg.register(Tool('external_app_status', 'Check a separately installed local app without copying it', external, Risk.READ_ONLY))
+    def web_search(payload):
+        return search_web(str(payload.get('query') or ''))
+    reg.register(Tool('web_search', 'Search the public web and return result titles', web_search, Risk.READ_ONLY))
