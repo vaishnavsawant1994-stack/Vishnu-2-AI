@@ -67,6 +67,11 @@ class AgentExecutor:
         self._paused = {}
         self._lock = threading.RLock()
         self.telemetry = telemetry
+        self.learning = None
+
+    def set_learning(self, learning):
+        """Attach governed lesson memory. It cannot change permissions."""
+        self.learning = learning
 
     def _observe(self, name, start):
         if self.telemetry:
@@ -188,6 +193,10 @@ class AgentExecutor:
             ],
         }
         context = json.dumps(grounding, default=str)[:14000] if memories or knowledge_results else ''
+        if self.learning is not None:
+            lessons = self.learning.context_for(text)
+            if lessons:
+                context = (context + "\n" + lessons).strip()[:14000]
         sensitivity = 'internal'
         if any(str(item.get('sensitivity', '')).lower() == 'secret' for item in memories):
             sensitivity = 'secret'
@@ -627,6 +636,8 @@ class AgentExecutor:
             self.memory.audit('approval', 'rejected', audit)
             self._security_audit('approval', 'rejected', audit)
             self.events.emit('approval.rejected', **audit)
+            if self.learning is not None:
+                self.learning.observe_rejection(paused.get('text', ''), paused.get('plan') or {}, step['tool'])
         self.events.emit('state', state='idle')
         return 'Action cancelled.'
 
@@ -671,5 +682,7 @@ class AgentExecutor:
         if self.second_brain:
             for candidate in self.second_brain.extract_candidates(text, answer):
                 self.second_brain.remember(candidate)
+        if self.learning is not None and results:
+            self.learning.observe_completion(text, {'steps': []}, results)
         self.events.emit('state', state='speaking')
         return answer
