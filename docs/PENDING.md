@@ -1,8 +1,10 @@
 # Pending
 
-These are not implemented as live actions.
+Phone screening now records a call, stores each line, and returns a transcript and summary. It does not yet receive the live carrier audio. That still needs the phone companion to send the caller's speech.
 
-- Phone answering: screen an incoming call, take a note, and return a transcript. The current call tool only records a note and does not answer the phone.
+Still not live:
+
+- Carrier audio from the phone into the screening session.
 - Vision model credentials on the owner's machine.
 - Live Spotify, maps, and smart-home device calls.
 - Windows window tiling, Wi-Fi, and brightness control.

@@ -17,6 +17,7 @@ from evo.image_tool import create_image
 from evo.download_tool import download_file
 from evo.read_tool import read_anything
 from evo.vision_tool import describe_image
+from evo.phone_screen import add_line, finish_screen, start_screen
 from evo.media import music_command
 from evo.phone import screen_call
 from tools.registry import Risk, Tool
@@ -112,3 +113,13 @@ def register(reg, settings, models=None):
     def own_vision(payload):
         return describe_image(str(payload.get('path') or ''), str(payload.get('question') or ''), models)
     reg.register(Tool('owner_vision', 'Describe an image with the configured vision model', own_vision, Risk.READ_ONLY))
+
+    def phone_start(payload):
+        return start_screen(str(payload.get('caller') or 'unknown'), Path(getattr(settings, 'data_dir', root)))
+    def phone_line(payload):
+        return add_line(str(payload.get('call_id') or ''), str(payload.get('speaker') or 'caller'), str(payload.get('text') or ''), Path(getattr(settings, 'data_dir', root)))
+    def phone_finish(payload):
+        return finish_screen(str(payload.get('call_id') or ''), Path(getattr(settings, 'data_dir', root)))
+    reg.register(Tool('phone_screen_start', 'Start screening a call and open a transcript', phone_start, Risk.EXTERNAL_SIDE_EFFECT))
+    reg.register(Tool('phone_screen_line', 'Add a caller or Vishnu line to the screened call', phone_line, Risk.READ_ONLY))
+    reg.register(Tool('phone_screen_finish', 'Finish the screened call and return the transcript and summary', phone_finish, Risk.READ_ONLY))
