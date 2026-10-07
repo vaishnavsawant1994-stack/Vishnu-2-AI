@@ -57,3 +57,6 @@ def register(reg, settings):
     reg.register(Tool('repair_note', 'Record a repair note without patching security files', heal, Risk.READ_ONLY))
     reg.register(Tool('home_command', 'Record a home command without sending it', home, Risk.READ_ONLY))
     reg.register(Tool('call_note', 'Record a call-screen note without answering the phone', phone, Risk.READ_ONLY))
+    def external(_):
+        return external_status(__import__('os').getenv('BRAHMA_HOME'), root)
+    reg.register(Tool('external_app_status', 'Check a separately installed local app without copying it', external, Risk.READ_ONLY))
