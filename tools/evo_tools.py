@@ -14,6 +14,7 @@ from evo.skills import calculate, check_code, now, read_page
 from evo.owner_tools import owner_code, owner_math, owner_search
 from evo.python_tool import run_python
 from evo.image_tool import create_image
+from evo.download_tool import download_file
 from evo.media import music_command
 from evo.phone import screen_call
 from tools.registry import Risk, Tool
@@ -97,3 +98,7 @@ def register(reg, settings):
         return create_image(str(payload.get('title') or 'Vishnu-2'), Path(settings.data_dir) / 'images')
     reg.register(Tool('owner_python', 'Run a short Python snippet in a subprocess', own_python, Risk.REVERSIBLE))
     reg.register(Tool('owner_image', 'Create a PNG image file from a title', own_image, Risk.REVERSIBLE))
+
+    def own_download(payload):
+        return download_file(str(payload.get('url') or ''), Path(getattr(settings, 'data_dir', root)))
+    reg.register(Tool('owner_download', 'Download a public HTTPS file into the data folder, max 5 MB', own_download, Risk.EXTERNAL_SIDE_EFFECT))
