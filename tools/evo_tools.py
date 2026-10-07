@@ -15,6 +15,7 @@ from evo.owner_tools import owner_code, owner_math, owner_search
 from evo.python_tool import run_python
 from evo.image_tool import create_image
 from evo.download_tool import download_file
+from evo.read_tool import read_anything
 from evo.media import music_command
 from evo.phone import screen_call
 from tools.registry import Risk, Tool
@@ -102,3 +103,7 @@ def register(reg, settings):
     def own_download(payload):
         return download_file(str(payload.get('url') or ''), Path(getattr(settings, 'data_dir', root)))
     reg.register(Tool('owner_download', 'Download a public HTTPS file into the data folder, max 2 GB', own_download, Risk.EXTERNAL_SIDE_EFFECT))
+
+    def own_read(payload):
+        return read_anything(str(payload.get('target') or ''), Path(getattr(settings, 'data_dir', root)))
+    reg.register(Tool('owner_read', 'Read a website, text file, PDF, or image', own_read, Risk.READ_ONLY))
