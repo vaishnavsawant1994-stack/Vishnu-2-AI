@@ -19,6 +19,7 @@ from evo.read_tool import read_anything
 from evo.vision_tool import describe_image
 from evo.phone_screen import add_line, capture_audio, finish_screen, start_screen
 from evo.coder import list_project, read_source, run_project, write_source
+from evo.fullstack import build_app
 from evo.media import music_command
 from evo.phone import screen_call
 from tools.registry import Risk, Tool
@@ -143,3 +144,7 @@ def register(reg, settings, models=None):
     reg.register(Tool('coder_read', 'Read a source file in the coding workspace', coder_read, Risk.READ_ONLY))
     reg.register(Tool('coder_write', 'Write a source file in the coding workspace', coder_write, Risk.REVERSIBLE))
     reg.register(Tool('coder_test', 'Run pytest in the coding workspace', coder_test, Risk.REVERSIBLE))
+
+    def fullstack(payload):
+        return build_app(Path(getattr(settings, 'data_dir', root)), str(payload.get('name') or 'app'))
+    reg.register(Tool('fullstack_build', 'Create a page, Flask API, and SQLite app in the coding workspace', fullstack, Risk.REVERSIBLE))
