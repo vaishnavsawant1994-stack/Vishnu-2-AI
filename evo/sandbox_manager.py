@@ -114,3 +114,24 @@ def admit(required: str, capabilities: dict) -> dict:
 def qualify_experiment(baseline: float, candidate: float, security_passed: bool, isolation_satisfied: bool) -> dict:
     promoted = candidate > baseline and security_passed and isolation_satisfied
     return {'promoted': promoted, 'reason': 'qualified' if promoted else 'score, security, or isolation failed'}
+
+
+def respond_to_isolation(required: str, capabilities: dict) -> dict:
+    decision = admit(required, capabilities)
+    if decision['ok']:
+        return {'action': 'run', 'failure': None}
+    if not capabilities.get('container') and not capabilities.get('vm'):
+        return {'action': 'block', 'failure': 'INSUFFICIENT_ISOLATION', 'install_docker': False, 'goal_changed': False}
+    return {'action': 'use_stronger_backend', 'failure': 'INSUFFICIENT_ISOLATION', 'install_docker': False}
+
+
+def isolation_evidence(required: str, capabilities: dict, baseline: float, candidate: float, security_passed: bool) -> dict:
+    satisfied = admit(required, capabilities)['ok']
+    return {
+        'required_isolation': required,
+        'actual_isolation': capabilities['available_isolation'],
+        'security_passed': security_passed,
+        'baseline': baseline,
+        'candidate': candidate,
+        'promoted': qualify_experiment(baseline, candidate, security_passed, satisfied)['promoted'],
+    }
