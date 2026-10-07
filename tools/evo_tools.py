@@ -12,6 +12,8 @@ from evo.local import make_skill, processes, set_volume, snapshot
 from evo.search import search_web
 from evo.skills import calculate, check_code, now, read_page
 from evo.owner_tools import owner_code, owner_math, owner_search
+from evo.python_tool import run_python
+from evo.image_tool import create_image
 from evo.media import music_command
 from evo.phone import screen_call
 from tools.registry import Risk, Tool
@@ -88,3 +90,10 @@ def register(reg, settings):
     reg.register(Tool('owner_math', 'Vaishnav math tool: arithmetic only', own_math, Risk.READ_ONLY))
     reg.register(Tool('owner_code', 'Vaishnav code tool: pure expression, no files or imports', own_code, Risk.READ_ONLY))
     reg.register(Tool('owner_search', 'Vaishnav search tool: public web titles', own_search, Risk.READ_ONLY))
+
+    def own_python(payload):
+        return run_python(str(payload.get('source') or ''))
+    def own_image(payload):
+        return create_image(str(payload.get('title') or 'Vishnu-2'), Path(settings.data_dir) / 'images')
+    reg.register(Tool('owner_python', 'Run a short Python snippet in a subprocess', own_python, Risk.REVERSIBLE))
+    reg.register(Tool('owner_image', 'Create a PNG image file from a title', own_image, Risk.REVERSIBLE))
