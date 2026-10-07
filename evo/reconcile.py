@@ -44,7 +44,7 @@ def reconcile(kind: str, target: str, expected: str = '') -> dict:
     return provider_status(kind)
 
 
-def github_pr(owner: str, repo: str, head: str, token: str = '') -> dict:
+def github_pr(owner: str, repo: str, head: str, token: str = '', base: str = '', sha: str = '') -> dict:
     """Ask GitHub whether a matching pull request exists. No token means unknown."""
     if not token:
         return {'state': 'UNKNOWN', 'provider': 'github', 'reason': 'no token', 'retry_safe': False}
@@ -59,6 +59,35 @@ def github_pr(owner: str, repo: str, head: str, token: str = '') -> dict:
         return {'state': 'UNKNOWN', 'provider': 'github', 'reason': str(exc)[:120], 'retry_safe': False}
     for pull in pulls:
         ref = str(pull.get('head', {}).get('ref', ''))
-        if ref == head:
-            return {'state': 'APPLIED', 'provider': 'github', 'external_id': pull.get('number'), 'retry_safe': False}
+        if ref != head:
+            continue
+        observed_base = str(pull.get('base', {}).get('ref', ''))
+        observed_sha = str(pull.get('head', {}).get('sha', ''))
+        if (base and observed_base != base) or (sha and observed_sha != sha):
+            return {'state': 'CONFLICTED', 'provider': 'github', 'external_id': pull.get('number'), 'retry_safe': False}
+        return {'state': 'APPLIED', 'provider': 'github', 'external_id': pull.get('number'), 'retry_safe': False}
     return {'state': 'NOT_APPLIED', 'provider': 'github', 'retry_safe': True}
+
+
+def deployment(expected_sha: str, observed: dict | None) -> dict:
+    """Classify a deployment observation. A missing query stays unknown."""
+    if not observed:
+        return {'state': 'UNKNOWN', 'provider': 'deployment', 'retry_safe': False}
+    if observed.get('sha') != expected_sha:
+        return {'state': 'CONFLICTED', 'provider': 'deployment', 'external_id': observed.get('id'), 'retry_safe': False}
+    status = str(observed.get('status', '')).lower()
+    if status in {'building', 'queued'}:
+        return {'state': 'IN_PROGRESS', 'provider': 'deployment', 'external_id': observed.get('id'), 'retry_safe': False}
+    if status in {'healthy', 'success'}:
+        return {'state': 'APPLIED', 'provider': 'deployment', 'external_id': observed.get('id'), 'retry_safe': False}
+    return {'state': 'UNKNOWN', 'provider': 'deployment', 'retry_safe': False}
+
+
+def next_decision(state: str) -> dict:
+    if state == 'APPLIED':
+        return {'action': 'continue', 'repeat': False}
+    if state == 'NOT_APPLIED':
+        return {'action': 'retry', 'repeat': True}
+    if state in {'CONFLICTED', 'PARTIALLY_APPLIED'}:
+        return {'action': 'replan', 'repeat': False}
+    return {'action': 'block', 'repeat': False}
