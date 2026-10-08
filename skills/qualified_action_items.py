@@ -64,7 +64,10 @@ def execute_action_items(data_dir: Path, text: str) -> dict:
     folder = _folder(data_dir)
     path = folder / (SKILL_ID + ".json")
     created = False
-    if path.exists():
+    from skills import postgres_skill_store
+    if postgres_skill_store.configured():
+        created = postgres_skill_store.get_or_qualify(SKILL_ID, SOURCE, _qualify)
+    elif path.exists():
         saved = json.loads(path.read_text(encoding="utf-8"))
         if saved.get("skill_id") != SKILL_ID or saved.get("sha256") != hashlib.sha256(SOURCE.encode()).hexdigest() or saved.get("source") != SOURCE:
             raise ValueError("stored skill failed integrity verification")
