@@ -27,7 +27,7 @@ SOURCE = '''def run(payload):
 '''
 PROBE = """import json, sys
 ns = {"__builtins__": {"str": str}}
-exec(compile(sys.stdin.readline(), "<qualified-skill>", "exec"), ns)
+exec(compile(json.loads(sys.stdin.readline()), "<qualified-skill>", "exec"), ns)
 cases = json.loads(sys.stdin.readline())
 print(json.dumps([ns["run"](case) for case in cases]))
 """
