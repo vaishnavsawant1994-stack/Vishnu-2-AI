@@ -168,7 +168,9 @@ def promote(run_id: str, *, data_dir: Path | None = None) -> dict:
     return _promote(run_id, authority=None, data_dir=data_dir)
 
 
-def rollback(run_id: str, *, data_dir: Path | None = None) -> dict:
+def rollback(run_id: str, *, authority=None, data_dir: Path | None = None) -> dict:
+    if authority is not _PROMOTION_AUTHORITY:
+        return {"state": "BLOCKED", "reason": "only the owner kernel can roll back"}
     data_dir = data_root(data_dir)
     root = run_dir(data_dir, run_id)
     release = _read_release(root)

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -16,6 +15,7 @@ import evo.rewrite.candidate as candidate_module
 import evo.rewrite.qualify as qualify_module
 import evo.rewrite.release as release_module
 import evo.rewrite.workspace as workspace_module
+from security.rewrite_owner import owner_rollback
 
 
 def _result(score=10.0, security=True):
@@ -114,7 +114,8 @@ def test_rewrite_acceptance_isolated_qualification_and_rollback(tmp_path, monkey
     monkeypatch.setenv("VISHNU_REWRITE_STAGING_ROLE", "non-production")
     staged = release_module.stage(run3["run_id"], data_dir=data_dir)
     assert staged["state"] == "STAGING"
-    restored = release_module.rollback(run3["run_id"], data_dir=data_dir)
+    assert release_module.rollback(run3["run_id"], data_dir=data_dir)["state"] == "BLOCKED"
+    restored = owner_rollback(run3["run_id"], data_dir=data_dir)
     assert restored["rollback_verified"] is True
     assert restored["running_sha"] == "frozen-git-sha"
     assert restored["tree_hashes_match"] is True

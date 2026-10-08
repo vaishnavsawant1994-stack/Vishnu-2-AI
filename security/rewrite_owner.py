@@ -23,3 +23,8 @@ def owner_record_canary(run_id: str, *, healthy: bool, error_rate: float, stop_a
         run_id, {"healthy": bool(healthy), "error_rate": float(error_rate), "stop_active": bool(stop_active)},
         authority=_PROMOTION_AUTHORITY, data_dir=data_dir,
     )
+
+
+def owner_rollback(run_id: str, *, data_dir: Path | None = None) -> dict:
+    from evo.rewrite.release import rollback
+    return rollback(run_id, authority=_PROMOTION_AUTHORITY, data_dir=data_dir)
