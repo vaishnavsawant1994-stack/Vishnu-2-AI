@@ -69,6 +69,17 @@ class AgentExecutor:
         self.telemetry = telemetry
         self.learning = None
 
+    def enter_conflict(self, conversation_id: str, observed: str = 'wrong base') -> dict:
+        """Enter the existing governed replan cycle; never execute a revised step here."""
+        from evo.runtime_loop import advance
+
+        if getattr(self.tools, 'emergency_stop', False):
+            return {'state': 'STOPPED', 'advanced': False}
+        memory_path = getattr(self.memory, 'path', None)
+        if memory_path is None:
+            return {'state': 'BLOCKED', 'advanced': False, 'reason': 'persistent goal store unavailable'}
+        return advance(Path(memory_path).parent, conversation_id, 'REPLAN', observed=observed)
+
     def set_learning(self, learning):
         """Attach governed lesson memory. It cannot change permissions."""
         self.learning = learning
