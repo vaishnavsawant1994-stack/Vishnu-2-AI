@@ -99,6 +99,24 @@ def validate_runtime_storage(
             'mount_point': None,
         }
 
+    # Render's free instance is ephemeral. Allow it only for an explicitly
+    # labeled development service; normal hosted runtimes still require a proven
+    # durable mount. This mode must never be used for production or sensitive data.
+    ephemeral_dev = (
+        env.get('PERSONAL_AI_ENVIRONMENT', '').strip().lower() == 'development'
+        and env.get('PERSONAL_AI_ALLOW_EPHEMERAL_CLOUD_DEV', '').strip().lower()
+        in {'1', 'true', 'yes', 'on'}
+    )
+    if ephemeral_dev:
+        data_dir.mkdir(parents=True, exist_ok=True)
+        return {
+            'state': 'ephemeral-development',
+            'hosted': True,
+            'data_dir': str(data_dir),
+            'durable': False,
+            'mount_point': None,
+        }
+
     durable_root = Path(env.get('PERSONAL_AI_DURABLE_ROOT', '/data')).expanduser().resolve()
     if not _is_within(data_dir, durable_root):
         raise StorageUnavailable(
