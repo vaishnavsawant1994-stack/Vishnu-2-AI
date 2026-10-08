@@ -85,3 +85,40 @@ def test_cloud_runtime_also_requires_durable_mount(tmp_path):
             environ={'PERSONAL_AI_DURABLE_ROOT': str(durable_root)},
             mount_points=set(),
         )
+
+
+def test_cloud_runtime_allows_explicit_ephemeral_development_only(tmp_path):
+    data_dir = tmp_path / 'temporary-render-data'
+    status = validate_runtime_storage(
+        _settings(data_dir, cloud=True),
+        environ={
+            'PERSONAL_AI_ENVIRONMENT': 'development',
+            'PERSONAL_AI_ALLOW_EPHEMERAL_CLOUD_DEV': 'true',
+        },
+        mount_points=set(),
+    )
+
+    assert status == {
+        'state': 'ephemeral-development',
+        'hosted': True,
+        'data_dir': str(data_dir.resolve()),
+        'durable': False,
+        'mount_point': None,
+    }
+    assert data_dir.is_dir()
+
+
+def test_ephemeral_cloud_development_flag_does_not_allow_production(tmp_path):
+    durable_root = tmp_path / 'volume'
+    data_dir = tmp_path / 'container-home' / '.personal_ai'
+
+    with pytest.raises(StorageUnavailable, match='must resolve beneath'):
+        validate_runtime_storage(
+            _settings(data_dir, cloud=True),
+            environ={
+                'PERSONAL_AI_ENVIRONMENT': 'production',
+                'PERSONAL_AI_ALLOW_EPHEMERAL_CLOUD_DEV': 'true',
+                'PERSONAL_AI_DURABLE_ROOT': str(durable_root),
+            },
+            mount_points=set(),
+        )
