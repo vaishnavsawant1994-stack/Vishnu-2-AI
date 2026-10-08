@@ -114,3 +114,12 @@ class SelfImprovementEngine:
     def reject_lesson(self, lesson_id: int) -> dict:
         with connect(self.path) as conn:
             return set_lesson_status(conn, lesson_id, 'rejected')
+
+    def perform_action_items(self, text: str) -> dict:
+        """Run the first qualified skill, using the persistent learning data root.
+
+        The initial run qualifies and stores the skill; later runs and new
+        engine instances reuse the same verified artifact.
+        """
+        from skills.qualified_action_items import execute_action_items
+        return execute_action_items(self.path.parent, text)
