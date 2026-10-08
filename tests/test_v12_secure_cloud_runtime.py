@@ -153,3 +153,37 @@ def test_stage8_new_cloud_session_does_not_grant_revoked_device_scopes(tmp_path)
     issued=r.issue_session('dev1','device-secret')
     assert issued.status==200
     assert set(issued.payload['scopes'])=={'status:read','memory:read'}
+
+
+def test_cloud_pair_offer_requires_owner_secret_and_preserves_loopback_gate(tmp_path):
+    from types import SimpleNamespace
+    from fastapi.testclient import TestClient
+    from server.api import create_app
+
+    secret = 'owner-secret-' + ('z' * 40)
+    settings = SimpleNamespace(
+        cloud_runtime_enabled=True,
+        cloud_owner_secret=secret,
+        cloud_allowed_origins=('https://vishnu-2-ai.vercel.app',),
+        cloud_session_ttl_seconds=900,
+        pairing_ttl_seconds=300,
+        data_dir=tmp_path,
+    )
+    app = create_app(
+        FakeExecutor(),
+        settings,
+        device_registry=FakeDevices(),
+        runtime={'memory': FakeMemory(), 'events': FakeEvents()},
+    )
+    client = TestClient(app)
+
+    denied = client.post('/cloud/pair/start', headers={'X-Personal-AI-Owner-Key': 'wrong'})
+    assert denied.status_code == 401
+
+    allowed = client.post('/cloud/pair/start', headers={'X-Personal-AI-Owner-Key': secret})
+    assert allowed.status_code == 200
+    assert len(allowed.json()['token']) >= 16
+    assert len(allowed.json()['code']) >= 4
+
+    # The original local pairing endpoint remains unavailable remotely.
+    assert client.post('/pair/start').status_code == 403

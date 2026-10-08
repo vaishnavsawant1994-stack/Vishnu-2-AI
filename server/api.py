@@ -250,6 +250,20 @@ def create_app(
         status = models.status(probe=True)
         return JSONResponse(status_code=200 if status['state'] == 'available' else 503, content=status)
 
+    @app.post('/cloud/pair/start')
+    def cloud_pair_start(
+        request: Request,
+        x_personal_ai_owner_key: str | None = Header(default=None),
+    ):
+        relay = require_cloud()
+        client = request.client.host if request.client else 'unknown'
+        if not relay.rate.allow(f'owner-pair:{client}'):
+            raise HTTPException(429, 'Pairing rate limit exceeded')
+        if not relay.owner.verify(x_personal_ai_owner_key or ''):
+            raise HTTPException(401, 'Unauthorized')
+        offer = pairing.create()
+        return {'token': offer.token, 'code': offer.code, 'expires_at': offer.expires_at}
+
     @app.post('/pair/start')
     def pair_start(request: Request):
         require_loopback(request)
