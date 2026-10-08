@@ -250,7 +250,7 @@ def register(reg, settings, models=None):
         return run_sandbox(Path(getattr(settings, 'data_dir', root)), str(payload.get('path') or 'main.py'), str(payload.get('source') or 'print(1)'))
     def page_reach(payload):
         return reach(str(payload.get('url') or ''))
-    reg.register(Tool('sandbox_run', 'Run a Python file in the coding workspace', sand, Risk.REVERSIBLE))
+    reg.register(Tool('workspace_python_run', 'Run a Python file in the coding workspace', sand, Risk.REVERSIBLE))
     reg.register(Tool('page_reach', 'Read one public https page without crawling', page_reach, Risk.READ_ONLY))
 
     def suite(payload):
