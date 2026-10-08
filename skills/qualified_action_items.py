@@ -32,8 +32,8 @@ cases = json.loads(sys.stdin.readline())
 print(json.dumps([ns["run"](case) for case in cases]))
 """
 CASES = [
-    ({"text": "- [ ] Send report\\n- [x] Done\\n- [ ] Review draft"}, {"items": ["Send report", "Review draft"]}),
-    ({"text": "Notes\\n- [ ] Call supplier\\n- [ ]  "}, {"items": ["Call supplier"]}),
+    ({"text": "- [ ] Send report\n- [x] Done\n- [ ] Review draft"}, {"items": ["Send report", "Review draft"]}),
+    ({"text": "Notes\n- [ ] Call supplier\n- [ ]  "}, {"items": ["Call supplier"]}),
     ({"text": "Nothing actionable"}, {"items": []}),
 ]
 
