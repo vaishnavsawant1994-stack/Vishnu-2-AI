@@ -50,7 +50,7 @@ def _qualify(source: str) -> bool:
     expected = [item[1] for item in CASES]
     proc = subprocess.run(
         [sys.executable, "-I", "-c", PROBE],
-        input=json.dumps(source) + "\n" + json.dumps(inputs) + "\\n",
+        input=json.dumps(source) + "\n" + json.dumps(inputs) + "\n",
         capture_output=True, text=True, timeout=8,
         env={"PATH": os.environ.get("PATH", "")},
     )
@@ -86,7 +86,7 @@ def execute_action_items(data_dir: Path, text: str) -> dict:
         created = True
     result = subprocess.run(
         [sys.executable, "-I", "-c", PROBE],
-        input=json.dumps(SOURCE) + "\n" + json.dumps([{"text": text}]) + "\\n",
+        input=json.dumps(SOURCE) + "\n" + json.dumps([{"text": text}]) + "\n",
         capture_output=True, text=True, timeout=8,
         env={"PATH": os.environ.get("PATH", "")},
     )
