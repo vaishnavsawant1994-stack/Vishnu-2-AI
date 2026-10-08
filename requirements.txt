@@ -26,3 +26,5 @@ PyAutoGUI>=0.9.54,<1
 keyring>=25,<27
 PyInstaller>=6.15,<7
 tzdata>=2025.2
+
+psycopg[binary]>=3.2,<4
