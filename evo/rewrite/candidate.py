@@ -9,7 +9,7 @@ from pathlib import Path
 
 from evo.rewrite import (
     PROTECTED_FILES, PROTECTED_SEGMENTS, append_audit, digest_file,
-    excluded, json_read, now, run_dir,
+    data_root, excluded, json_read, now, run_dir,
 )
 
 
@@ -35,6 +35,10 @@ def _safe_target(app_root: Path, relative: str) -> Path:
 
 
 def apply_candidate(run_id: str, changes, *, data_dir: Path | None = None) -> dict:
+    from evo.rewrite.workspace import _stop_active
+    data_dir = data_root(data_dir)
+    if _stop_active(data_dir):
+        return {"state": "STOPPED", "reason": "Stop is active"}
     root = run_dir(data_dir, run_id).resolve()
     manifest_path = root / "manifest.json"
     if not manifest_path.is_file():

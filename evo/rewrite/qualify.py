@@ -141,6 +141,11 @@ def qualify_rewrite(baseline_id: str, run_id: str, *, data_dir: Path | None = No
         return {"state": "REJECTED", "reason": "baseline binding is invalid"}
     if run_manifest.get("state") != "OPEN":
         return {"state": "REJECTED", "reason": "rewrite run is not open"}
+    from evo.rewrite.workspace import _stop_active
+    if _stop_active(data_dir):
+        append_audit(data_dir, {"action": "rewrite_rejected", "run_id": run_id, "reason": "Stop is active"})
+        shutil.rmtree(run_path, ignore_errors=True)
+        return {"state": "STOPPED", "reason": "Stop is active"}
     required = str(run_manifest.get("required_isolation", "CONTAINER"))
     actual = actual_isolation()
     if not isolation_satisfied(required, actual) or actual != "CONTAINER":

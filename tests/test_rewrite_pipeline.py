@@ -127,4 +127,9 @@ def test_rewrite_acceptance_isolated_qualification_and_rollback(tmp_path, monkey
     blocked = candidate_module.apply_candidate(run4["run_id"], {"security/stop.py": {"content": "pass", "reason": "attack"}}, data_dir=data_dir)
     assert blocked["state"] == "SECURITY_FAILURE"
     monkeypatch.setattr(workspace_module, "_stop_active", lambda data: True)
+    assert candidate_module.apply_candidate(
+        run4["run_id"], {"README.md": {"content": "blocked", "reason": "stop test"}}, data_dir=data_dir
+    )["state"] == "STOPPED"
+    assert qualify_module.qualify_rewrite(baseline["baseline_id"], run4["run_id"], data_dir=data_dir)["state"] == "STOPPED"
+    assert not rewrite.run_dir(data_dir, run4["run_id"]).exists()
     assert workspace_module.open_rewrite(data_dir, baseline["baseline_id"])["state"] == "STOPPED"
