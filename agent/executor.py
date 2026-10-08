@@ -77,7 +77,7 @@ class AgentExecutor:
         work = Path(getattr(self, "settings", None) and getattr(self.settings, "data_dir", None) or Path(getattr(getattr(self, "memory", None), "path", Path.cwd())).parent)
         return advance(work, conversation_id, "REPLAN", observed, True, False)
 
-def set_learning(self, learning):
+    def set_learning(self, learning):
         """Attach governed lesson memory. It cannot change permissions."""
         self.learning = learning
 
