@@ -41,6 +41,7 @@ def test_rewrite_acceptance_isolated_qualification_and_rollback(tmp_path, monkey
     monkeypatch.setattr(baseline_module, "measure_tree", lambda tree, actual: _result(10.0, True))
     monkeypatch.setattr(rewrite, "actual_isolation", lambda: "CONTAINER")
     monkeypatch.setattr(workspace_module, "actual_isolation", lambda: "CONTAINER")
+    monkeypatch.setattr(qualify_module, "actual_isolation", lambda: "CONTAINER")
     monkeypatch.setattr(workspace_module, "_stop_active", lambda data: False)
     monkeypatch.setenv("VISHNU_REWRITE_REQUIRED_ISOLATION", "CONTAINER")
 
