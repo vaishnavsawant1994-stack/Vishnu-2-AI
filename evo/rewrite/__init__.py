@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 from datetime import datetime, timezone
@@ -18,7 +19,7 @@ APPLICATION_ROOT = Path(os.environ.get("VISHNU_APP_ROOT", PROJECT_ROOT)).resolve
 DEFAULT_DATA_DIR = Path(os.environ.get("PERSONAL_AI_DATA_DIR", Path.home() / ".vishnu" / "data"))
 EXCLUDED_SEGMENTS = {
     ".git", ".venv", "venv", "__pycache__", "node_modules", "vault", "secrets",
-    "secret", "data", "security", "owner_kernel", "qualification", "rollback", "rewrite",
+    "secret", "credentials", "data", "security", "owner_kernel", "qualification", "rollback", "rewrite",
 }
 PROTECTED_SEGMENTS = EXCLUDED_SEGMENTS | {"auth", "stop", "tests", ".github"}
 PROTECTED_FILES = {"core/permissions.py", "tools/registry.py", "desktop/operator_context.py"}
@@ -117,12 +118,19 @@ def rewrite_root(data_dir: Path | None = None) -> Path:
     return data_root(data_dir) / "rewrite"
 
 
+def _checked_id(value: str) -> str:
+    identifier = str(value)
+    if re.fullmatch(r"[a-f0-9]{32}", identifier) is None:
+        raise ValueError("rewrite identifiers must be 32 lowercase hex characters")
+    return identifier
+
+
 def baseline_dir(data_dir: Path | None, baseline_id: str) -> Path:
-    return rewrite_root(data_dir) / "baselines" / str(baseline_id)
+    return rewrite_root(data_dir) / "baselines" / _checked_id(baseline_id)
 
 
 def run_dir(data_dir: Path | None, run_id: str) -> Path:
-    return rewrite_root(data_dir) / "runs" / str(run_id)
+    return rewrite_root(data_dir) / "runs" / _checked_id(run_id)
 
 
 def actual_isolation() -> str:

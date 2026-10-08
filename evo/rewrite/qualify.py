@@ -144,6 +144,8 @@ def qualify_rewrite(baseline_id: str, run_id: str, *, data_dir: Path | None = No
     required = str(run_manifest.get("required_isolation", "CONTAINER"))
     actual = actual_isolation()
     if not isolation_satisfied(required, actual) or actual != "CONTAINER":
+        append_audit(data_dir, {"action": "rewrite_rejected", "run_id": run_id, "reason": "insufficient isolation"})
+        shutil.rmtree(run_path, ignore_errors=True)
         return {"state": "INSUFFICIENT_ISOLATION", "required_isolation": required, "actual_isolation": actual}
 
     baseline_app = baseline_path / "app"
@@ -152,6 +154,7 @@ def qualify_rewrite(baseline_id: str, run_id: str, *, data_dir: Path | None = No
     baseline_now = tree_hashes(baseline_app)
     if baseline_now != expected_baseline:
         append_audit(data_dir, {"action": "baseline_tamper_detected", "baseline_id": baseline_id})
+        shutil.rmtree(run_path, ignore_errors=True)
         return {"state": "SECURITY_FAILURE", "reason": "frozen baseline hash mismatch"}
 
     before = run_manifest.get("application_hashes", {})
