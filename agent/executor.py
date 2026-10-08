@@ -69,7 +69,15 @@ class AgentExecutor:
         self.telemetry = telemetry
         self.learning = None
 
-    def set_learning(self, learning):
+    def enter_conflict(self, conversation_id: str, observed: str = "wrong base") -> dict:
+        """Enter replan once. This does not execute the revised step."""
+        if getattr(self.tools, "emergency_stop", False):
+            return {"state": "STOPPED", "advanced": False}
+        from evo.runtime_loop import advance
+        work = Path(getattr(self, "settings", None) and getattr(self.settings, "data_dir", None) or Path(getattr(getattr(self, "memory", None), "path", Path.cwd())).parent)
+        return advance(work, conversation_id, "REPLAN", observed, True, False)
+
+def set_learning(self, learning):
         """Attach governed lesson memory. It cannot change permissions."""
         self.learning = learning
 
@@ -218,6 +226,12 @@ class AgentExecutor:
         self.events.emit('state', state='thinking')
         start = time.perf_counter()
         try:
+            if mind_active and "CONFLICTED" in context:
+                stepped = self.enter_conflict(str(conversation_id or ""), "wrong base")
+                if stepped.get("state") == "BLOCKED":
+                    raise PermissionError(stepped.get("reason", "replan blocked"))
+                if stepped.get("context"):
+                    context = (context + "\n" + stepped["context"]).strip()[:14000]
             planner = self.planner.plan_one if mind_active and hasattr(self.planner, "plan_one") else self.planner.plan
             plan = planner(text, context=context, sensitivity=sensitivity)
             self._observe('agent.plan_ms', start)
