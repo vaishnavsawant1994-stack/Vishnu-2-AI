@@ -110,6 +110,7 @@ def test_rewrite_acceptance_isolated_qualification_and_rollback(tmp_path, monkey
     # Stage is explicitly non-production; rollback verifies frozen hashes and SHA.
     staging = tmp_path / "staging-host"
     monkeypatch.setenv("VISHNU_REWRITE_STAGING_ROOT", str(staging))
+    monkeypatch.setenv("VISHNU_REWRITE_STAGING_ROLE", "non-production")
     staged = release_module.stage(run3["run_id"], data_dir=data_dir)
     assert staged["state"] == "STAGING"
     restored = release_module.rollback(run3["run_id"], data_dir=data_dir)

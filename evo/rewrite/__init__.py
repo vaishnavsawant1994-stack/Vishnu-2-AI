@@ -23,10 +23,10 @@ EXCLUDED_SEGMENTS = {
 PROTECTED_SEGMENTS = EXCLUDED_SEGMENTS | {"auth", "stop", "tests", ".github"}
 PROTECTED_FILES = {"core/permissions.py", "tools/registry.py", "desktop/operator_context.py"}
 REWRITE_DIRS = ("rewrite", "baselines", "runs")
-TEST_COMMAND = ["python", "-m", "pytest", "-q"]
-PHASE0_COMMAND = ["python", "-m", "pytest", "-q", "tests/test_phase0_executor.py"]
+TEST_COMMAND = ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider"]
+PHASE0_COMMAND = ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_phase0_executor.py"]
 SECURITY_COMMAND = [
-    "python", "-m", "pytest", "-q",
+    "python", "-m", "pytest", "-q", "-p", "no:cacheprovider",
     "tests/test_registry_unique.py",
     "tests/test_rewrite_security_contract.py",
 ]
