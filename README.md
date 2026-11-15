@@ -40,3 +40,7 @@ Run tests and inspect provider/storage configuration before executing actions. A
 ## Security and provenance
 
 This is a public source repository. Never commit keys, personal data, signing material, device identities or owner vault data. Historical import and qualification references are preserved for provenance, but current deployments and GitHub ownership must be verified independently before use.
+
+## Detailed project guide
+
+The [**Project Handbook**](docs/PROJECT_HANDBOOK.md) describes the repository's specific goals, users, source architecture, functional areas, current qualification limits, development setup, security requirements and next milestones. It differentiates implemented source from unverified or planned functionality.
